@@ -85,17 +85,17 @@
       <modular.jdk.surefire.arg>--add-modules java.sql,jdk.unsupported </modular.jdk.surefire.arg>
 
       <activemq-artemis-native-version>1.0.2</activemq-artemis-native-version>
-      <karaf.version>4.3.3</karaf.version>
+      <karaf.version>4.4.0</karaf.version>
       <pax.exam.version>4.13.4</pax.exam.version>
       <commons.config.version>2.7</commons.config.version>
       <commons.lang.version>3.12.0</commons.lang.version>
       <activemq5-version>5.17.1</activemq5-version>
       <apache.derby.version>10.14.2.0</apache.derby.version>
       <commons.beanutils.version>1.9.4</commons.beanutils.version>
-      <commons.dbcp2.version>2.7.0</commons.dbcp2.version>
-      <commons.pool2.version>2.7.0</commons.pool2.version>
+      <commons.dbcp2.version>2.9.0</commons.dbcp2.version>
+      <commons.pool2.version>2.9.0</commons.pool2.version>
       <commons.collections.version>3.2.2</commons.collections.version>
-      <commons.text.version>1.8</commons.text.version>
+      <commons.text.version>1.9</commons.text.version>
       <commons.io.version>2.10.0</commons.io.version>
       <commons.codec.version>1.15</commons.codec.version>
       <fuse.mqtt.client.version>1.16</fuse.mqtt.client.version>
@@ -105,7 +105,7 @@
       <jboss.logging.version>3.5.0.Final</jboss.logging.version>
       <jetty.version>9.4.45.v20220203</jetty.version>
       <tomcat.servlet-api.version>8.5.78</tomcat.servlet-api.version>
-      <jgroups.version>5.2.0.Final</jgroups.version>
+      <jgroups.version>5.2.2.Final</jgroups.version>
       <errorprone.version>2.10.0</errorprone.version>
       <maven.enforcer.plugin.version>3.0.0</maven.enforcer.plugin.version>
       <maven.bundle.plugin.version>5.1.6</maven.bundle.plugin.version>
@@ -115,10 +115,10 @@
       <checkstyle.version>9.2.1</checkstyle.version>
       <mockito.version>4.4.0</mockito.version>
       <jctools.version>2.1.2</jctools.version>
-      <netty.version>4.1.77.Final</netty.version>
+      <netty.version>4.1.78.Final</netty.version>
       <hdrhistogram.version>2.1.12</hdrhistogram.version>
       <curator.version>5.2.0</curator.version>
-      <zookeeper.version>3.6.3</zookeeper.version>
+      <zookeeper.version>3.7.1</zookeeper.version>
 
       <!-- tracing -->
       <opentelemetry.version>1.10.0</opentelemetry.version>
@@ -127,7 +127,7 @@
       <!-- this is basically for tests -->
       <netty-tcnative-version>2.0.52.Final</netty-tcnative-version>
       <proton.version>0.33.10</proton.version>
-      <resteasy.version>3.15.0.Final</resteasy.version>
+      <resteasy.version>3.15.3.Final</resteasy.version>
       <slf4j.version>1.7.36</slf4j.version>
       <qpid.jms.version>1.6.0</qpid.jms.version>
       <johnzon.version>1.2.16</johnzon.version>
@@ -179,7 +179,7 @@
       <vertx.version>3.9.4</vertx.version>
       <hadoop.minikdc.version>3.3.1</hadoop.minikdc.version>
 
-      <owasp.version>6.1.0</owasp.version>
+      <owasp.version>7.1.0</owasp.version>
       <spring.version>5.3.20</spring.version>
 
       <jackson.version>2.13.2</jackson.version>
