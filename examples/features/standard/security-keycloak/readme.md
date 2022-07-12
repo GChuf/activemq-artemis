@@ -118,8 +118,8 @@ the artemis instance in this example as part of broker creation via the pom.xml 
   +- org.keycloak:keycloak-core:jar
   |  +- org.keycloak:keycloak-common:jar
   |  |  \- com.sun.activation:jakarta.activation:jar
-  |  +- org.bouncycastle:bcprov-jdk15on:jar
-  |  +- org.bouncycastle:bcpkix-jdk15on:jar
+  |  +- org.bouncycastle:bcprov-jdk18on:jar
+  |  +- org.bouncycastle:bcpkix-jdk18on:jar
   |  +- com.fasterxml.jackson.core:jackson-core:jar
   |  \- com.fasterxml.jackson.core:jackson-databind:jar
   |     \- com.fasterxml.jackson.core:jackson-annotations:jar
