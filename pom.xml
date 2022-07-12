@@ -151,21 +151,21 @@
       <jakarta.xml.bind-api.version>2.3.3</jakarta.xml.bind-api.version>
       <weld.version>2.4.0.Final</weld.version>
       <arquillian-weld-embedded.version>2.0.0.Beta3</arquillian-weld-embedded.version>
-      <owb.version>1.7.0</owb.version>
-      <arquillian.version>1.1.11.Final</arquillian.version>
+      <owb.version>1.7.4</owb.version>
+      <arquillian.version>1.4.0.Final</arquillian.version>
       <servicemix.json-1.1.spec.version>2.9.0</servicemix.json-1.1.spec.version>
-      <version.org.jacoco>0.8.6</version.org.jacoco>
-      <version.org.jacoco.plugin>0.8.6</version.org.jacoco.plugin>
-      <version.micrometer>1.8.5</version.micrometer>
-      <hamcrest.version>2.1</hamcrest.version>
+      <version.org.jacoco>0.8.8</version.org.jacoco>
+      <version.org.jacoco.plugin>0.8.8</version.org.jacoco.plugin>
+      <version.micrometer>1.9.1</version.micrometer>
+      <hamcrest.version>2.2</hamcrest.version>
       <junit.version>4.13.2</junit.version>
       <surefire.version>2.22.2</surefire.version>
-      <version.jaxb.runtime>2.3.3</version.jaxb.runtime>
+      <version.jaxb.runtime>2.3.6</version.jaxb.runtime>
       <paho.client.mqtt.version>1.2.5</paho.client.mqtt.version>
-      <postgresql.version>42.3.3</postgresql.version>
-      <testcontainers.version>1.16.3</testcontainers.version>
+      <postgresql.version>42.4.0</postgresql.version>
+      <testcontainers.version>1.17.3</testcontainers.version>
       <exec-maven-plugin.version>3.0.0</exec-maven-plugin.version>
-      <apache.httpcore.version>4.4.13</apache.httpcore.version>
+      <apache.httpcore.version>4.4.15</apache.httpcore.version>
       <apache.httpclient.version>4.5.13</apache.httpclient.version>
 
       <!-- for JakartaEE -->
