@@ -239,9 +239,9 @@
       <activemq.basedir>${project.basedir}</activemq.basedir>
       <skipOWASP>true</skipOWASP>
 
-      <directory-version>2.0.0.AM25</directory-version>
-      <directory-jdbm2-version>2.0.0-M1</directory-jdbm2-version>
-      <bcprov-jdk15on-version>1.69</bcprov-jdk15on-version>
+      <directory-version>2.0.0.AM26</directory-version>
+      <directory-jdbm2-version>2.0.0-M5</directory-jdbm2-version>
+      <bcprov-jdk18on-version>1.71</bcprov-jdk15on-version>
 
       <netty-transport-native-epoll-classifier>linux-x86_64</netty-transport-native-epoll-classifier>
       <netty-transport-native-kqueue-classifier>osx-x86_64</netty-transport-native-kqueue-classifier>
