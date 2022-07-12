@@ -240,7 +240,7 @@
       <skipOWASP>true</skipOWASP>
 
       <directory-version>2.0.0.AM26</directory-version>
-      <directory-jdbm2-version>2.0.0-M2</directory-jdbm2-version>
+      <directory-jdbm2-version>2.0.0-M1</directory-jdbm2-version>
       <bcprov-jdk18on-version>1.71</bcprov-jdk18on-version>
 
       <netty-transport-native-epoll-classifier>linux-x86_64</netty-transport-native-epoll-classifier>
