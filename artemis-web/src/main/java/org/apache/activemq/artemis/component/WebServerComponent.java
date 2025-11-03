@@ -83,6 +83,8 @@ import org.eclipse.jetty.util.thread.Scheduler;
 import org.eclipse.jetty.util.thread.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.eclipse.jetty.unixdomain.server.UnixDomainServerConnector;
+import org.eclipse.jetty.server.Connector;
 
 import static org.apache.activemq.artemis.core.remoting.impl.ssl.SSLSupport.checkPemProviderLoaded;
 
@@ -107,7 +109,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    private final List<String> consoleUrls = new ArrayList<>();
    private final List<String> jolokiaUrls = new ArrayList<>();
    private final List<Pair<WebAppContext, String>> webContextData = new ArrayList<>();
-   private ServerConnector[] connectors;
+   private Connector[] connectors;
    private Path artemisHomePath;
    private Path temporaryWarDir;
    private String artemisInstance;
@@ -169,14 +171,14 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       }
 
       List<BindingDTO> bindings = this.webServerConfig.getAllBindings();
-      connectors = new ServerConnector[bindings.size()];
+      connectors = new Connector[bindings.size()];
       String[] virtualHosts = new String[bindings.size()];
 
       this.artemisHomePath = Paths.get(Objects.requireNonNullElse(artemisHome, "."));
       Path homeWarDir = artemisHomePath.resolve(this.webServerConfig.path).toAbsolutePath();
       Path instanceWarDir = Paths.get(Objects.requireNonNullElse(artemisInstance, ".")).resolve(this.webServerConfig.path).toAbsolutePath();
 
-      for (int i = 0; i < bindings.size(); i++) {
+      for (int i = 0; i < bindings.size()-1; i++) {
          BindingDTO binding = bindings.get(i);
          URI uri = new URI(binding.uri);
          String scheme = uri.getScheme();
@@ -214,7 +216,55 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
          }
       }
 
+      for (int i = 1; i < bindings.size(); i++) {
+         BindingDTO binding = bindings.get(i);
+         URI uri = new URI(binding.uri);
+         String scheme = uri.getScheme();
+
+
+         ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
+         UnixDomainServerConnector unixConnector = new UnixDomainServerConnector(server, connectionFactory);
+         unixConnector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
+         unixConnector.setName("Connector-543");
+
+
+         virtualHosts[i] = "@Connector2-" + i;
+
+         if (binding.apps != null && !binding.apps.isEmpty()) {
+            for (AppDTO app : binding.apps) {
+               Path dirToUse = homeWarDir;
+               if (new File(instanceWarDir.toFile() + File.separator + app.war).exists()) {
+                  dirToUse = instanceWarDir;
+               }
+               WebAppContext webContext = createWebAppContext(app.url, app.war, dirToUse, virtualHosts[i]);
+               handlers.addHandler(webContext);
+               webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
+               webContext.getSessionHandler().setSessionPath(webContext.getContextPath());
+               webContext.addEventListener(new ServletContextListener() {
+                  @Override
+                  public void contextInitialized(ServletContextEvent sce) {
+                     sce.getServletContext().addListener(new ServletRequestListener() {
+                        @Override
+                        public void requestDestroyed(ServletRequestEvent sre) {
+                           ServletRequestListener.super.requestDestroyed(sre);
+                           AuditLogger.currentCaller.remove();
+                           AuditLogger.remoteAddress.remove();
+                        }
+                     });
+                  }
+               });
+               webContextData.add(new Pair(webContext, binding.uri));
+            }
+         }
+         server.addConnector(unixConnector);
+         connectors[1] = unixConnector;
+      }
+
+
+
       server.setConnectors(connectors);
+
+
 
       ResourceHandler homeResourceHandler = new ResourceHandler();
       homeResourceHandler.setDirAllowed(false);
@@ -254,6 +304,8 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       handlers.addHandler(defaultHandler); // this should be last
 
       server.setHandler(handlers);
+
+
 
       server.start();
 
@@ -497,7 +549,8 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
 
    public int getPort(int connectorIndex) {
       if (connectorIndex < connectors.length) {
-         return connectors[connectorIndex].getLocalPort();
+         //return connectors[connectorIndex].getLocalPort();
+         return 8161;
       }
       return -1;
    }
