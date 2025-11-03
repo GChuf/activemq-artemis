@@ -153,11 +153,11 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       handlers = new Handler.Sequence();
 
       HttpConfiguration httpConfiguration = new HttpConfiguration();
-
+      HttpConfiguration httpConfiguration2 = new HttpConfiguration();
       if (webServerConfig.maxRequestHeaderSize != null) {
          httpConfiguration.setRequestHeaderSize(webServerConfig.maxRequestHeaderSize);
       }
-
+      //httpConfiguration2.setRequestHeaderSize(webServerConfig.maxRequestHeaderSize);
       if (webServerConfig.maxResponseHeaderSize != null) {
          httpConfiguration.setResponseHeaderSize(webServerConfig.maxResponseHeaderSize);
       }
@@ -178,25 +178,55 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       Path homeWarDir = artemisHomePath.resolve(this.webServerConfig.path).toAbsolutePath();
       Path instanceWarDir = Paths.get(Objects.requireNonNullElse(artemisInstance, ".")).resolve(this.webServerConfig.path).toAbsolutePath();
 
-      for (int i = 0; i < bindings.size()-1; i++) {
+      for (int i = 0; i < bindings.size(); i++) {
          BindingDTO binding = bindings.get(i);
          URI uri = new URI(binding.uri);
          String scheme = uri.getScheme();
-         ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
 
-         connectors[i] = connector;
+
          virtualHosts[i] = "@Connector-" + i;
 
+
+         if ("http".equals(scheme)) {
+            ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
+            connector.setName("@Connector-" + i);
+            connectors[i] = connector;
+         }
+         else if ("unix".equals(scheme)) {
+            httpConfiguration2.setSendServerVersion(false);
+            ConnectionFactory connectionFactory2 = new HttpConnectionFactory(httpConfiguration2);
+
+            UnixDomainServerConnector connector = new UnixDomainServerConnector(server, connectionFactory2);
+
+            connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
+            connector.setName("@Connector-" + i);
+
+            //unixConnector.setAccepting(true);
+            connectors[i] = connector;
+         }
+
+
+         //ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
+         
+
+
          if (binding.apps != null && !binding.apps.isEmpty()) {
             for (AppDTO app : binding.apps) {
                Path dirToUse = homeWarDir;
                if (new File(instanceWarDir.toFile() + File.separator + app.war).exists()) {
                   dirToUse = instanceWarDir;
                }
-               WebAppContext webContext = createWebAppContext(app.url, app.war, dirToUse, virtualHosts[i]);
+               WebAppContext webContext;
+                if ("http".equals(scheme)) {
+                  webContext = createWebAppContext(app.url, app.war, dirToUse, virtualHosts[i]);
+                } else {
+                  webContext = createWebAppContext(app.url, app.war, dirToUse, null);
+                }
                handlers.addHandler(webContext);
                webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
-               webContext.getSessionHandler().getSessionCookieConfig().setName("JSESSIONID_" + i + "_" + connector.getPort());
+               if ("http".equals(scheme)) {
+                  webContext.getSessionHandler().getSessionCookieConfig().setName("JSESSIONID_" + i + "_" + 8161);
+               }
                webContext.getSessionHandler().setSessionPath(webContext.getContextPath());
                webContext.addEventListener(new ServletContextListener() {
                   @Override
@@ -215,52 +245,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
             }
          }
       }
-
-      for (int i = 1; i < bindings.size(); i++) {
-         BindingDTO binding = bindings.get(i);
-         URI uri = new URI(binding.uri);
-         String scheme = uri.getScheme();
-
-
-         ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
-         UnixDomainServerConnector unixConnector = new UnixDomainServerConnector(server, connectionFactory);
-         unixConnector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
-         unixConnector.setName("Connector-543");
-
-
-         virtualHosts[i] = "@Connector2-" + i;
-
-         if (binding.apps != null && !binding.apps.isEmpty()) {
-            for (AppDTO app : binding.apps) {
-               Path dirToUse = homeWarDir;
-               if (new File(instanceWarDir.toFile() + File.separator + app.war).exists()) {
-                  dirToUse = instanceWarDir;
-               }
-               WebAppContext webContext = createWebAppContext(app.url, app.war, dirToUse, virtualHosts[i]);
-               handlers.addHandler(webContext);
-               webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
-               webContext.getSessionHandler().setSessionPath(webContext.getContextPath());
-               webContext.addEventListener(new ServletContextListener() {
-                  @Override
-                  public void contextInitialized(ServletContextEvent sce) {
-                     sce.getServletContext().addListener(new ServletRequestListener() {
-                        @Override
-                        public void requestDestroyed(ServletRequestEvent sre) {
-                           ServletRequestListener.super.requestDestroyed(sre);
-                           AuditLogger.currentCaller.remove();
-                           AuditLogger.remoteAddress.remove();
-                        }
-                     });
-                  }
-               });
-               webContextData.add(new Pair(webContext, binding.uri));
-            }
-         }
-         server.addConnector(unixConnector);
-         connectors[1] = unixConnector;
-      }
-
-
 
       server.setConnectors(connectors);
 
@@ -305,7 +289,13 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
 
       server.setHandler(handlers);
 
-
+      for (Handler h : handlers.getHandlers()) {
+         System.out.println("Handler: " + h + "  vhosts=" +
+            (h instanceof WebAppContext ? Arrays.toString(((WebAppContext) h).getVirtualHosts()) : ""));
+      }
+      for (Connector c : server.getConnectors()) {
+         System.out.println("Connector: " + c.getName() + "  class=" + c.getClass().getSimpleName());
+      }
 
       server.start();
 
@@ -576,7 +566,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       // https://github.com/eclipse/jetty.project/commit/7e91d34177a880ecbe70009e8f200d02e3a0c5dd
       webapp.getSecurityHandler().setAuthenticatorFactory(new DefaultAuthenticatorFactory());
 
-      webapp.setVirtualHosts(new String[]{virtualHost});
+      webapp.setVirtualHosts(new String[]{ null });
 
       return webapp;
    }
