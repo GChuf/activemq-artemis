@@ -153,11 +153,11 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       handlers = new Handler.Sequence();
 
       HttpConfiguration httpConfiguration = new HttpConfiguration();
-      HttpConfiguration httpConfiguration2 = new HttpConfiguration();
+
       if (webServerConfig.maxRequestHeaderSize != null) {
          httpConfiguration.setRequestHeaderSize(webServerConfig.maxRequestHeaderSize);
       }
-      //httpConfiguration2.setRequestHeaderSize(webServerConfig.maxRequestHeaderSize);
+
       if (webServerConfig.maxResponseHeaderSize != null) {
          httpConfiguration.setResponseHeaderSize(webServerConfig.maxResponseHeaderSize);
       }
@@ -169,6 +169,8 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
             ActiveMQWebLogger.LOGGER.customizerNotLoaded(this.webServerConfig.customizer, t);
          }
       }
+
+      httpConfiguration.setSendServerVersion(false);
 
       List<BindingDTO> bindings = this.webServerConfig.getAllBindings();
       connectors = new Connector[bindings.size()];
@@ -193,18 +195,20 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
             connectors[i] = connector;
          }
          else if ("unix".equals(scheme)) {
-            httpConfiguration2.setSendServerVersion(false);
-            ConnectionFactory connectionFactory2 = new HttpConnectionFactory(httpConfiguration2);
+            //ConnectionFactory connectionFactory2 = new HttpConnectionFactory(httpConfiguration);
+            //UnixDomainServerConnector connector = new UnixDomainServerConnector(server, connectionFactory2);
+            //connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
+            //connector.setName("@Connector-" + i);
 
-            UnixDomainServerConnector connector = new UnixDomainServerConnector(server, connectionFactory2);
 
-            connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
-            connector.setName("@Connector-" + i);
+            UnixDomainServerConnector connector = createUnixDomainServerConnector(httpConfiguration, i, binding, uri);
 
             //unixConnector.setAccepting(true);
             connectors[i] = connector;
+         } else {
+            System.out.println("Scheme " + scheme + " is not supported!");
+            connectors[i] = null;
          }
-
 
          //ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
          
@@ -371,7 +375,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
          secureRequestCustomizer.setSniHostCheck(Objects.requireNonNullElse(binding.getSniHostCheck(), DEFAULT_SNI_HOST_CHECK_VALUE));
          secureRequestCustomizer.setSniRequired(Objects.requireNonNullElse(binding.getSniRequired(), DEFAULT_SNI_REQUIRED_VALUE));
          httpConfiguration.addCustomizer(secureRequestCustomizer);
-         httpConfiguration.setSendServerVersion(false);
          HttpConnectionFactory httpFactory = new HttpConnectionFactory(httpConfiguration);
 
          if (Boolean.FALSE.equals(binding.getHttp2())) {
@@ -384,16 +387,34 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
             SslConnectionFactory sslConnectionFactory = new SslConnectionFactory(sslFactory, alpn.getProtocol());
             connector = new ServerConnector(server, sslConnectionFactory, alpn, h2, httpFactory);
          }
+         connector.setPort(uri.getPort());
+         connector.setHost(uri.getHost());
       } else {
-         httpConfiguration.setSendServerVersion(false);
          ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
          connector = new ServerConnector(server, connectionFactory);
+         connector.setPort(uri.getPort());
+         connector.setHost(uri.getHost());
       }
-      connector.setPort(uri.getPort());
-      connector.setHost(uri.getHost());
-      connector.setName("Connector-" + i);
+      //connector.setName("Connector-" + i);
       return connector;
    }
+
+   private UnixDomainServerConnector createUnixDomainServerConnector(HttpConfiguration httpConfiguration,
+                                              int i,
+                                              BindingDTO binding,
+                                              URI uri
+                                              ) throws Exception {
+
+         UnixDomainServerConnector connector;
+
+         ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
+         connector = new UnixDomainServerConnector(server, connectionFactory);
+         connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
+         connector.setName("@Connector-" + i);
+         System.out.println("unix connector uri is: " + uri);
+      return connector;
+   }
+
 
    private File getStoreFile(String storeFilename) {
       File storeFile = new File(storeFilename);
