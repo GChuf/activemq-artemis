@@ -110,6 +110,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    private final List<String> jolokiaUrls = new ArrayList<>();
    private final List<Pair<WebAppContext, String>> webContextData = new ArrayList<>();
    private Connector[] connectors;
+   private ServerConnector[] serverConnctors;
    private Path artemisHomePath;
    private Path temporaryWarDir;
    private String artemisInstance;
@@ -211,7 +212,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
          }
 
          //ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
-         
 
 
          if (binding.apps != null && !binding.apps.isEmpty()) {
@@ -409,12 +409,22 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
 
          ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
          connector = new UnixDomainServerConnector(server, connectionFactory);
-         connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
+         connector.setUnixDomainPath(getUnixPath(uri));
          connector.setName("@Connector-" + i);
          System.out.println("unix connector uri is: " + uri);
+         System.out.println("unix connector uri host is: " + uri.getHost());
       return connector;
    }
 
+   private Path getUnixPath(URI uri) {
+      String uriString = uri.toString();
+      String path = uriString.substring(7, uriString.length());
+
+      if (path == null || path.isEmpty()) {
+         throw new IllegalArgumentException("Unix domain socket URI must have a valid path: " + uri);
+      }
+      return Path.of(path);
+   } 
 
    private File getStoreFile(String storeFilename) {
       File storeFile = new File(storeFilename);
@@ -559,9 +569,8 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    }
 
    public int getPort(int connectorIndex) {
-      if (connectorIndex < connectors.length) {
-         //return connectors[connectorIndex].getLocalPort();
-         return 8161;
+      if ((connectorIndex < connectors.length) && connectors[connectorIndex] instanceof ServerConnector) {
+         return ((ServerConnector)connectors[connectorIndex]).getLocalPort();
       }
       return -1;
    }
