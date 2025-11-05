@@ -147,6 +147,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       }
       ActiveMQWebLogger.LOGGER.startingEmbeddedWebServer();
 
+      
       ThreadFactory threadFactory = SecurityManagerShim.doPrivileged((PrivilegedAction<ThreadFactory>) () -> new ActiveMQThreadFactory("web", false, WebServerComponent.class.getClassLoader()));
       ThreadPool threadPool = new QueuedThreadPool(webServerConfig.maxThreads, webServerConfig.minThreads, webServerConfig.idleThreadTimeout, -1, null, null, threadFactory);
       Scheduler scheduler = new ScheduledExecutorScheduler("activemq-web-scheduled", false);
