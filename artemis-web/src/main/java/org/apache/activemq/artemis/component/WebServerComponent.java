@@ -63,6 +63,7 @@ import org.eclipse.jetty.ee9.webapp.WebAppContext;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.http2.server.HTTP2ServerConnectionFactory;
 import org.eclipse.jetty.server.ConnectionFactory;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -75,6 +76,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.unixdomain.server.UnixDomainServerConnector;
 import org.eclipse.jetty.util.Scanner;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
@@ -83,8 +85,7 @@ import org.eclipse.jetty.util.thread.Scheduler;
 import org.eclipse.jetty.util.thread.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.eclipse.jetty.unixdomain.server.UnixDomainServerConnector;
-import org.eclipse.jetty.server.Connector;
+
 
 import static org.apache.activemq.artemis.core.remoting.impl.ssl.SSLSupport.checkPemProviderLoaded;
 
@@ -110,7 +111,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    private final List<String> jolokiaUrls = new ArrayList<>();
    private final List<Pair<WebAppContext, String>> webContextData = new ArrayList<>();
    private Connector[] connectors;
-   private ServerConnector[] serverConnctors;
    private Path artemisHomePath;
    private Path temporaryWarDir;
    private String artemisInstance;
@@ -175,7 +175,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
 
       List<BindingDTO> bindings = this.webServerConfig.getAllBindings();
       connectors = new Connector[bindings.size()];
-      String[] virtualHosts = new String[bindings.size()];
 
       this.artemisHomePath = Paths.get(Objects.requireNonNullElse(artemisHome, "."));
       Path homeWarDir = artemisHomePath.resolve(this.webServerConfig.path).toAbsolutePath();
@@ -186,33 +185,17 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
          URI uri = new URI(binding.uri);
          String scheme = uri.getScheme();
 
-
-         virtualHosts[i] = "@Connector-" + i;
-
-
-         if ("http".equals(scheme)) {
-            ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
-            connector.setName("@Connector-" + i);
+         if ("http".equals(scheme) || "https".equals(scheme)) {
+            ServerConnector connector = createServerConnector(httpConfiguration, binding, uri, scheme);
             connectors[i] = connector;
          }
          else if ("unix".equals(scheme)) {
-            //ConnectionFactory connectionFactory2 = new HttpConnectionFactory(httpConfiguration);
-            //UnixDomainServerConnector connector = new UnixDomainServerConnector(server, connectionFactory2);
-            //connector.setUnixDomainPath(Path.of("/tmp/jetty.sock"));
-            //connector.setName("@Connector-" + i);
-
-
-            UnixDomainServerConnector connector = createUnixDomainServerConnector(httpConfiguration, i, binding, uri);
-
-            //unixConnector.setAccepting(true);
+            UnixDomainServerConnector connector = createUnixDomainServerConnector(httpConfiguration, binding, uri);
             connectors[i] = connector;
          } else {
             System.out.println("Scheme " + scheme + " is not supported!");
             connectors[i] = null;
          }
-
-         //ServerConnector connector = createServerConnector(httpConfiguration, i, binding, uri, scheme);
-
 
          if (binding.apps != null && !binding.apps.isEmpty()) {
             for (AppDTO app : binding.apps) {
@@ -222,9 +205,9 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
                }
                WebAppContext webContext;
                 if ("http".equals(scheme)) {
-                  webContext = createWebAppContext(app.url, app.war, dirToUse, virtualHosts[i]);
+                  webContext = createWebAppContext(app.url, app.war, dirToUse);
                 } else {
-                  webContext = createWebAppContext(app.url, app.war, dirToUse, null);
+                  webContext = createWebAppContext(app.url, app.war, dirToUse);
                 }
                handlers.addHandler(webContext);
                webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
@@ -252,8 +235,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
 
       server.setConnectors(connectors);
 
-
-
       ResourceHandler homeResourceHandler = new ResourceHandler();
       homeResourceHandler.setDirAllowed(false);
       homeResourceHandler.setWelcomeFiles("index.html");
@@ -262,7 +243,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       homeContext.setContextPath("/");
       homeContext.setBaseResourceAsPath(homeWarDir);
       homeContext.setHandler(homeResourceHandler);
-      homeContext.setVirtualHosts(Arrays.asList(virtualHosts));
 
       ResourceHandler instanceResourceHandler = new ResourceHandler();
       instanceResourceHandler.setDirAllowed(false);
@@ -272,7 +252,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       instanceContext.setContextPath("/");
       instanceContext.setBaseResourceAsPath(instanceWarDir);
       instanceContext.setHandler(instanceResourceHandler);
-      instanceContext.setVirtualHosts(Arrays.asList(virtualHosts));
 
       DefaultHandler defaultHandler = new DefaultHandler();
       defaultHandler.setServeFavIcon(false);
@@ -292,14 +271,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       handlers.addHandler(defaultHandler); // this should be last
 
       server.setHandler(handlers);
-
-      for (Handler h : handlers.getHandlers()) {
-         System.out.println("Handler: " + h + "  vhosts=" +
-            (h instanceof WebAppContext ? Arrays.toString(((WebAppContext) h).getVirtualHosts()) : ""));
-      }
-      for (Connector c : server.getConnectors()) {
-         System.out.println("Connector: " + c.getName() + "  class=" + c.getClass().getSimpleName());
-      }
 
       server.start();
 
@@ -328,7 +299,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    }
 
    private ServerConnector createServerConnector(HttpConfiguration httpConfiguration,
-                                              int i,
                                               BindingDTO binding,
                                               URI uri,
                                               String scheme) throws Exception {
@@ -395,24 +365,16 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
          connector.setPort(uri.getPort());
          connector.setHost(uri.getHost());
       }
-      //connector.setName("Connector-" + i);
       return connector;
    }
 
-   private UnixDomainServerConnector createUnixDomainServerConnector(HttpConfiguration httpConfiguration,
-                                              int i,
-                                              BindingDTO binding,
-                                              URI uri
-                                              ) throws Exception {
+   private UnixDomainServerConnector createUnixDomainServerConnector(HttpConfiguration httpConfiguration, BindingDTO binding, URI uri) throws Exception {
 
          UnixDomainServerConnector connector;
 
          ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
          connector = new UnixDomainServerConnector(server, connectionFactory);
          connector.setUnixDomainPath(getUnixPath(uri));
-         connector.setName("@Connector-" + i);
-         System.out.println("unix connector uri is: " + uri);
-         System.out.println("unix connector uri host is: " + uri.getHost());
       return connector;
    }
 
@@ -575,7 +537,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       return -1;
    }
 
-   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory, String virtualHost) {
+   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory) {
       WebAppContext webapp = new WebAppContext();
       if (url.startsWith("/")) {
          webapp.setContextPath(url);
@@ -595,8 +557,6 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       // Set the default authenticator factory to avoid NPE due to the following commit:
       // https://github.com/eclipse/jetty.project/commit/7e91d34177a880ecbe70009e8f200d02e3a0c5dd
       webapp.getSecurityHandler().setAuthenticatorFactory(new DefaultAuthenticatorFactory());
-
-      webapp.setVirtualHosts(new String[]{ null });
 
       return webapp;
    }
