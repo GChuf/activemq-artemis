@@ -86,7 +86,6 @@ import org.eclipse.jetty.util.thread.ThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import static org.apache.activemq.artemis.core.remoting.impl.ssl.SSLSupport.checkPemProviderLoaded;
 
 public class WebServerComponent implements ExternalComponent, WebServerComponentMarker {
@@ -204,14 +203,10 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
                   dirToUse = instanceWarDir;
                }
                WebAppContext webContext;
-                if ("http".equals(scheme)) {
-                  webContext = createWebAppContext(app.url, app.war, dirToUse);
-                } else {
-                  webContext = createWebAppContext(app.url, app.war, dirToUse);
-                }
+               webContext = createWebAppContext(app.url, app.war, dirToUse);
                handlers.addHandler(webContext);
                webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
-               if ("http".equals(scheme)) {
+               if ("http".equals(scheme) || "unix".equals(scheme)) {
                   webContext.getSessionHandler().getSessionCookieConfig().setName("JSESSIONID_" + i + "_" + 8161);
                }
                webContext.getSessionHandler().setSessionPath(webContext.getContextPath());
@@ -369,9 +364,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
    }
 
    private UnixDomainServerConnector createUnixDomainServerConnector(HttpConfiguration httpConfiguration, BindingDTO binding, URI uri) throws Exception {
-
          UnixDomainServerConnector connector;
-
          ConnectionFactory connectionFactory = new HttpConnectionFactory(httpConfiguration);
          connector = new UnixDomainServerConnector(server, connectionFactory);
          connector.setUnixDomainPath(getUnixPath(uri));
