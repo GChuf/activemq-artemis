@@ -203,7 +203,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
                   dirToUse = instanceWarDir;
                }
                WebAppContext webContext;
-               webContext = createWebAppContext(app.url, app.war, dirToUse);
+               webContext = createWebAppContext(app.url, app.war, dirToUse, null);
                handlers.addHandler(webContext);
                webContext.getSessionHandler().getSessionCookieConfig().setComment("__SAME_SITE_STRICT__");
                if ("http".equals(scheme) || "unix".equals(scheme)) {
@@ -530,7 +530,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       return -1;
    }
 
-   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory) {
+   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory, VirtualHost virtualHost) {
       WebAppContext webapp = new WebAppContext();
       if (url.startsWith("/")) {
          webapp.setContextPath(url);
