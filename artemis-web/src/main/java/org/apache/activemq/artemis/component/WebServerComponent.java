@@ -530,7 +530,7 @@ public class WebServerComponent implements ExternalComponent, WebServerComponent
       return -1;
    }
 
-   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory, VirtualHost virtualHost) {
+   protected WebAppContext createWebAppContext(String url, String warFile, Path warDirectory, String virtualHost) {
       WebAppContext webapp = new WebAppContext();
       if (url.startsWith("/")) {
          webapp.setContextPath(url);
