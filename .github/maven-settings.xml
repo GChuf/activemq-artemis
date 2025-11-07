@@ -33,7 +33,6 @@
         </repository>
       </repositories>
       <properties>
-        <maven.artifact.threads>-1</maven.artifact.threads>
         <maven.transfer.progress>false</maven.transfer.progress>
       </properties>
       <pluginRepositories>
