@@ -48,7 +48,7 @@ jobs:
       - name: Fast Tests
         run: |
           cd activemq-artemis
-          mvn -B -T 1C -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
+          mvn -B -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
 
       - name: Archive Test Logs
         if: failure()
