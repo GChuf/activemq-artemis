@@ -43,12 +43,11 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # use 'install' so smoke-tests will work
       # By setting anything to org.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED we are disabling libaio loading on the testsuite
       - name: Fast Tests
         run: |
           cd activemq-artemis
-          mvn -B -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
+          mvn -B -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests verify
 
       - name: Archive Test Logs
         if: failure()
@@ -94,13 +93,13 @@ jobs:
         run: |
           nproc
           cd activemq-artemis
-          mvn -B -T 1C -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip install
+          mvn -B -T 1C -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip verify
 
       - name: Build Main (JDK <25)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests install
+          mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests verify
 
       - name: Set Examples Version to Artemis Version
         run: |
@@ -114,13 +113,13 @@ jobs:
         if: matrix.java == '25'
         run: |
           cd activemq-artemis-examples
-          mvn -s ../activemq-artemis/.github/maven-settings.xml install -Prelease
+          mvn -s ../activemq-artemis/.github/maven-settings.xml verify -Prelease
 
       - name: Build Examples (JDK <25 / -Pexamples,noRun)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis-examples
-          mvn -s ../activemq-artemis/.github/maven-settings.xml install -Pexamples,noRun
+          mvn -s ../activemq-artemis/.github/maven-settings.xml verify -Pexamples,noRun
 
       - name: Javadoc Check (JDK25 / -Prelease)
         if: matrix.java == '25'
@@ -138,4 +137,4 @@ jobs:
         if: matrix.java == '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml clean install -DskipTests -Prelease -am -pl "artemis-website"
+          mvn -s .github/maven-settings.xml clean verify -DskipTests -Prelease -am -pl "artemis-website"
