@@ -48,7 +48,7 @@ jobs:
       - name: Fast Tests
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
+          mvn -B -T 1C -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
 
       - name: Archive Test Logs
         if: failure()
@@ -90,7 +90,7 @@ jobs:
         if: matrix.java == '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip install
+          mvn -B -T 1C -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip install
 
       - name: Build Main (JDK <25)
         if: matrix.java != '25'
