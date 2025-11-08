@@ -46,6 +46,8 @@ jobs:
       # By setting anything to org.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED we are disabling libaio loading on the testsuite
       - name: Fast Tests
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -B -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests verify
 
@@ -91,18 +93,23 @@ jobs:
       - name: Build Main (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
-          nproc
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -B -T 1C -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip verify
 
       - name: Build Main (JDK <25)
         if: matrix.java != '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests verify
 
       - name: Set Examples Version to Artemis Version
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           CURRENT_ARTEMIS_BUILD_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "Current Artemis version: ${CURRENT_ARTEMIS_BUILD_VERSION}"
@@ -112,29 +119,39 @@ jobs:
       - name: Build Examples (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis-examples
           mvn -s ../activemq-artemis/.github/maven-settings.xml verify -Prelease
 
       - name: Build Examples (JDK <25 / -Pexamples,noRun)
         if: matrix.java != '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis-examples
           mvn -s ../activemq-artemis/.github/maven-settings.xml verify -Pexamples,noRun
 
       - name: Javadoc Check (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -s .github/maven-settings.xml javadoc:javadoc -Prelease -DskipWebsiteDocGeneration=true -DskipWebsiteJavadocGeneration=true
 
       - name: Javadoc Check (JDK <25)
         if: matrix.java != '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -s .github/maven-settings.xml javadoc:javadoc
 
       - name: Website Content Check (JDK25 only / -Prelease)
         if: matrix.java == '25'
         run: |
+          export MAVEN_OPTS="-Xmx12G -Djava.io.tmpdir=/dev/shm"
+          echo "MAVEN_OPTS=$MAVEN_OPTS"
           cd activemq-artemis
           mvn -s .github/maven-settings.xml clean verify -DskipTests -Prelease -am -pl "artemis-website"
