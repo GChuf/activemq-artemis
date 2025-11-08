@@ -34,6 +34,7 @@
       </repositories>
       <properties>
         <maven.transfer.progress>false</maven.transfer.progress>
+		<maven.artifact.threads>4</maven.artifact.threads>
       </properties>
       <pluginRepositories>
         <pluginRepository>
