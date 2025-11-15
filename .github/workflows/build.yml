@@ -24,7 +24,7 @@ env:
 jobs:
   test:
     name: Test (${{ matrix.java }})
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -34,6 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: activemq-artemis
+          show-progress: false
 
       # Cache is prepared by the 'checks' jobs below
       - name: Restore Maven Local Repo Cache
@@ -69,7 +70,7 @@ jobs:
 
   checks:
     name: Checks (${{ matrix.java }})
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -79,6 +80,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: activemq-artemis
+          show-progress: false
 
       - name: Cache Maven Local Repo
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
