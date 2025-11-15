@@ -58,8 +58,7 @@ jobs:
       - name: Fast Tests
         run: |
           cd activemq-artemis
-          mvn -B -s compile
-
+          mvn -B compile
 
   test:
     name: Test (${{ matrix.java }})
