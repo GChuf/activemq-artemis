@@ -22,6 +22,45 @@ env:
 
 
 jobs:
+  compile:
+    name: Compile (${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ 25 ]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: activemq-artemis
+          show-progress: false
+
+      # Cache is prepared by the 'checks' jobs below
+      - name: Restore Maven Local Repo Cache
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.m2/repository/
+          key: ${{ runner.os }}-mvn-${{ hashFiles('activemq-artemis/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-mvn-
+
+      - name: Install JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+
+      # use 'install' so smoke-tests will work
+      # By setting anything to org.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED we are disabling libaio loading on the testsuite
+      - name: Fast Tests
+        run: |
+          cd activemq-artemis
+          mvn -B -s compile
+
+
   test:
     name: Test (${{ matrix.java }})
     runs-on: ubuntu-latest
