@@ -57,7 +57,7 @@ jobs:
       - name: Fast Tests
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
+          mvn -B -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
 
       - name: Archive Test Logs
         if: failure()
@@ -107,13 +107,13 @@ jobs:
         if: matrix.java == '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip -Pcompatibility-tests -DskipCompatibilityTests install
+          mvn -B -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip -Pcompatibility-tests -DskipCompatibilityTests install
 
       - name: Build Main (JDK <25)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests -Pcompatibility-tests -DskipCompatibilityTests -Dshade-plugin-create-sources=true install
+          mvn -B -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests -Pcompatibility-tests -DskipCompatibilityTests -Dshade-plugin-create-sources=true install
 
       - name: Set Examples Version to Artemis Version
         run: |
@@ -127,44 +127,44 @@ jobs:
         if: matrix.java == '25'
         run: |
           cd activemq-artemis-examples
-          mvn -s ../activemq-artemis/.github/maven-settings.xml install -Prelease
+          mvn -B -s ../activemq-artemis/.github/maven-settings.xml install -Prelease
 
       - name: Build Examples (JDK <25 / -Pexamples,noRun)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis-examples
-          mvn -s ../activemq-artemis/.github/maven-settings.xml install -Pexamples,noRun
-          mvn -s ../activemq-artemis/.github/maven-settings.xml -f examples/features/standard/security-keycloak/pom.xml install -PnoRun
-          mvn -s ../activemq-artemis/.github/maven-settings.xml -f examples/features/sub-modules/pom.xml install -Prelease -Denforcer.skip
+          mvn -B -s ../activemq-artemis/.github/maven-settings.xml install -Pexamples,noRun
+          mvn -B -s ../activemq-artemis/.github/maven-settings.xml -f examples/features/standard/security-keycloak/pom.xml install -PnoRun
+          mvn -B -s ../activemq-artemis/.github/maven-settings.xml -f examples/features/sub-modules/pom.xml install -Prelease -Denforcer.skip
 
       - name: Javadoc Check (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml javadoc:javadoc -Prelease -DskipWebsiteDocGeneration=true -DskipWebsiteJavadocGeneration=true
+          mvn -B -s .github/maven-settings.xml javadoc:javadoc -Prelease -DskipWebsiteDocGeneration=true -DskipWebsiteJavadocGeneration=true
 
       - name: Javadoc Check (JDK <25)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml javadoc:javadoc
+          mvn -B -s .github/maven-settings.xml javadoc:javadoc
 
       - name: Website Content Check (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml clean install -DskipTests -Prelease -am -pl "artemis-website"
+          mvn -B -s .github/maven-settings.xml clean install -DskipTests -Prelease -am -pl "artemis-website"
 
       - name: Website Content Check (JDK <25)
         if: matrix.java != '25'
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml clean install -DskipTests -Prelease -Denforcer.skip -am -pl "artemis-website"
+          mvn -B -s .github/maven-settings.xml clean install -DskipTests -Prelease -Denforcer.skip -am -pl "artemis-website"
 
       - name: Additional Cache Priming
         run: |
           cd activemq-artemis
-          mvn -s .github/maven-settings.xml clean verify -Prelease -Denforcer.skip -pl "artemis-unit-test-support,org.apache.activemq:artemis-junit-5"
+          mvn -B -s .github/maven-settings.xml clean verify -Prelease -Denforcer.skip -pl "artemis-unit-test-support,org.apache.activemq:artemis-junit-5"
 
       - name: Clean Up Before Caching
         run: |
