@@ -54,7 +54,9 @@ jobs:
 
       - name: Verify Maven
         run: mvn --version
-  
+        
+      - name: Install ping
+        run: sudo apt-get update && sudo apt-get install -y iputils-ping
       # By setting anything to org.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED we are disabling libaio loading on the testsuite
       - name: Fast Tests
         run: |
@@ -104,7 +106,9 @@ jobs:
 
       - name: Verify Maven
         run: mvn --version
-        
+      - name: Install ping
+        run: sudo apt-get update && sudo apt-get install -y iputils-ping
+      
       - name: Checkout Artemis Examples Repo
         uses: actions/checkout@v4
         with:
