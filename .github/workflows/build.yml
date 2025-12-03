@@ -42,7 +42,19 @@ jobs:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
           cache: 'maven'
+  
+      - name: Install Maven (explicit)
+        run: |
+          MAVEN_VERSION=3.9.9
+          wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+          tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
+          echo "M2_HOME=/opt/maven" >> $GITHUB_ENV
+          echo "/opt/maven/bin" >> $GITHUB_PATH
 
+      - name: Verify Maven
+        run: mvn --version
+  
       # By setting anything to org.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED we are disabling libaio loading on the testsuite
       - name: Fast Tests
         run: |
@@ -80,7 +92,19 @@ jobs:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
           cache: 'maven'
+          
+      - name: Install Maven (explicit)
+        run: |
+          MAVEN_VERSION=3.9.9
+          wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+          tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
+          echo "M2_HOME=/opt/maven" >> $GITHUB_ENV
+          echo "/opt/maven/bin" >> $GITHUB_PATH
 
+      - name: Verify Maven
+        run: mvn --version
+        
       - name: Checkout Artemis Examples Repo
         uses: actions/checkout@v4
         with:
