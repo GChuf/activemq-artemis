@@ -116,10 +116,8 @@ public class ActiveMQJAASSecurityManager implements ActiveMQSecurityManager5 {
                             final String address) {
       boolean authorized = SecurityManagerUtil.authorize(subject, roles, checkType, rolePrincipalClass);
 
-      if (authorized) {
-         logger.trace("user is authorized");
-      } else {
-         logger.trace("user is NOT authorized");
+      if (logger.isTraceEnabled()) {
+         logger.trace("user is authorized: {}", authorized);
       }
 
       return authorized;
