@@ -108,10 +108,16 @@ public class ActiveMQBasicSecurityManager implements ActiveMQSecurityManager5, U
                             final CheckType checkType,
                             final String address) {
       boolean authorized = SecurityManagerUtil.authorize(subject, roles, checkType, RolePrincipal.class);
-      if (authorized) {
-         logger.trace("user is authorized");
-      } else {
-         logger.trace("user is NOT authorized");
+
+      if (logger.isTraceEnabled()) {
+         logger.trace("user is authorized: {}", authorized);
+      }
+      logger.warn("user is authorized: {}", authorized);
+      logger.warn("Address: {}", address);
+      logger.warn("checkType: {}", checkType.toString());
+
+      for (Role role : roles) {
+         logger.warn("Role: {}", role.getName());
       }
 
       return authorized;

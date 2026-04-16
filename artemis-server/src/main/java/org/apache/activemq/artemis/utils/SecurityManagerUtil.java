@@ -114,6 +114,7 @@ public class SecurityManagerUtil {
     */
    public static boolean authorize(final Subject subject, final Set<Role> roles, final CheckType checkType, final Class rolePrincipalClass) {
 
+
       if (subject != null) {
          Set<RolePrincipal> rolesWithPermission = getPrincipalsInRole(checkType, roles, rolePrincipalClass);
 
