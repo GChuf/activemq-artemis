@@ -27,10 +27,20 @@ import org.apache.activemq.artemis.core.security.CheckType;
 import org.apache.activemq.artemis.core.security.Role;
 import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
 import org.apache.activemq.artemis.spi.core.security.jaas.RolePrincipal;
-
+import org.apache.activemq.artemis.core.server.ActiveMQMessageBundle;
+import org.apache.activemq.artemis.core.server.ActiveMQServerLogger;
+import org.apache.activemq.artemis.spi.core.protocol.RemotingConnection;
+import org.apache.activemq.artemis.spi.core.security.jaas.RolePrincipal;
+import org.apache.activemq.artemis.spi.core.security.jaas.UserPrincipal;
+import org.apache.activemq.artemis.utils.ClassloadingUtil;
+import org.apache.activemq.artemis.utils.SecurityManagerUtil;
+import org.slf4j.Logger;
+import java.lang.invoke.MethodHandles;
+import org.slf4j.LoggerFactory;
 public class SecurityManagerUtil {
 
    private static final String WILDCARD = "*";
+   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    public static Set<RolePrincipal> getPrincipalsInRole(final CheckType checkType, final Set<Role> roles, final Class rolePrincipalClass) {
       Set principals = new HashSet<>();
@@ -114,7 +124,8 @@ public class SecurityManagerUtil {
     */
    public static boolean authorize(final Subject subject, final Set<Role> roles, final CheckType checkType, final Class rolePrincipalClass) {
 
-
+      logger.warn("authorizing for fuvcks sake");
+      logger.error("authorizing for fuvcks sake");
       if (subject != null) {
          Set<RolePrincipal> rolesWithPermission = getPrincipalsInRole(checkType, roles, rolePrincipalClass);
 

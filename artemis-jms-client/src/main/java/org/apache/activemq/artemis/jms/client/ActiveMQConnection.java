@@ -58,6 +58,9 @@ import org.apache.activemq.artemis.utils.VersionLoader;
 import org.apache.activemq.artemis.utils.collections.ConcurrentHashSet;
 import org.apache.activemq.artemis.utils.sm.SecurityManagerShim;
 
+import java.lang.invoke.MethodHandles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * Apache Artemis implementation of a JMS Connection.
  * <p>
@@ -66,6 +69,7 @@ import org.apache.activemq.artemis.utils.sm.SecurityManagerShim;
  */
 public class ActiveMQConnection extends ActiveMQConnectionForContextImpl implements TopicConnection, QueueConnection {
 
+   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    public static final int TYPE_GENERIC_CONNECTION = 0;
 
@@ -623,6 +627,7 @@ public class ActiveMQConnection extends ActiveMQConnectionForContextImpl impleme
    }
 
    public void authorize(boolean validateClientId) throws JMSException {
+      logger.warn("authorizing inside activemqconnection");
       try {
          initialSession = sessionFactory.createSession(username, password, false, false, false, false, 0, clientID);
 
