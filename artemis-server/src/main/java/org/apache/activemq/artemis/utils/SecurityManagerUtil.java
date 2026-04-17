@@ -37,6 +37,9 @@ import org.apache.activemq.artemis.utils.SecurityManagerUtil;
 import org.slf4j.Logger;
 import java.lang.invoke.MethodHandles;
 import org.slf4j.LoggerFactory;
+import java.util.Iterator;
+
+
 public class SecurityManagerUtil {
 
    private static final String WILDCARD = "*";
@@ -124,8 +127,8 @@ public class SecurityManagerUtil {
     */
    public static boolean authorize(final Subject subject, final Set<Role> roles, final CheckType checkType, final Class rolePrincipalClass) {
 
-      logger.warn("authorizing for fuvcks sake");
-      logger.error("authorizing for fuvcks sake");
+      logger.warn("authorizing");
+      /*
       if (subject != null) {
          Set<RolePrincipal> rolesWithPermission = getPrincipalsInRole(checkType, roles, rolePrincipalClass);
 
@@ -145,6 +148,91 @@ public class SecurityManagerUtil {
             }
          }
       }
+      */
+
+   long t0 = System.nanoTime();
+
+   if (subject != null) {
+
+      // --- getPrincipalsInRole ---
+      long t1 = System.nanoTime();
+      Set<RolePrincipal> rolesWithPermission =
+         getPrincipalsInRole(checkType, roles, rolePrincipalClass);
+      long t2 = System.nanoTime();
+
+      // --- getPrincipals ---
+      Set<Principal> rolesForSubject;
+      long t3 = System.nanoTime();
+      try {
+         rolesForSubject = subject.getPrincipals(rolePrincipalClass);
+      } catch (Exception e) {
+         ActiveMQServerLogger.LOGGER.failedToFindRolesForTheSubject(e);
+
+         long tEnd = System.nanoTime();
+         logger.warn("authorize FAILED (exception) total={}ns", (tEnd - t0));
+         return false;
+      }
+      long t4 = System.nanoTime();
+
+long t000 = System.nanoTime();
+      boolean authorized = false;
+      if (!rolesForSubject.isEmpty() && !rolesWithPermission.isEmpty()) {
+         Iterator<Principal> rolesForSubjectIter = rolesForSubject.iterator();
+         while (!authorized && rolesForSubjectIter.hasNext()) {
+            Iterator<RolePrincipal> rolesWithPermissionIter = rolesWithPermission.iterator();
+            Principal subjectRole = rolesForSubjectIter.next();
+            while (!authorized && rolesWithPermissionIter.hasNext()) {
+               Principal roleWithPermission = rolesWithPermissionIter.next();
+               authorized = subjectRole.equals(roleWithPermission);
+            }
+         }
+      }
+long t001 = System.nanoTime();
+ logger.warn("old loop is={}ns", (t001 - t000));
+
+
+      // --- loop ---
+      long loopStart = System.nanoTime();
+
+      if (!rolesForSubject.isEmpty() && !rolesWithPermission.isEmpty()) {
+         for (Principal subjectRole : rolesForSubject) {
+            if (rolesWithPermission.contains(subjectRole)) {
+
+               long loopEnd = System.nanoTime();
+               long tEnd = loopEnd;
+
+               logger.warn(
+                  "authorize SUCCESS total={}ns [perm={}ns, principals={}ns, loop={}ns]",
+                  (tEnd - t0),
+                  (t2 - t1),
+                  (t4 - t3),
+                  (loopEnd - loopStart)
+               );
+
+               return true;
+            }
+         }
+      }
+
+      long loopEnd = System.nanoTime();
+      long tEnd = loopEnd;
+
+
+
+
+
+      logger.warn(
+         "authorize FAIL total={}ns [perm={}ns, principals={}ns, loop={}ns]",
+         (tEnd - t0),
+         (t2 - t1),
+         (t4 - t3),
+         (loopEnd - loopStart)
+      );
+   } else {
+      long tEnd = System.nanoTime();
+      logger.warn("authorize FAIL (no subject) total={}ns", (tEnd - t0));
+   }
+
       return false;
    }
 }
