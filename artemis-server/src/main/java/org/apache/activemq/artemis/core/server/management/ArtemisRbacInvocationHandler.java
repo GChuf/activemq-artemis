@@ -26,6 +26,8 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import javax.security.auth.Subject;
+
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -42,11 +44,15 @@ import org.apache.activemq.artemis.core.server.ActiveMQServer;
 import org.apache.activemq.artemis.logs.AuditLogger;
 import org.apache.activemq.artemis.spi.core.protocol.RemotingConnection;
 import org.apache.activemq.artemis.utils.sm.SecurityManagerShim;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ArtemisRbacInvocationHandler implements GuardInvocationHandler {
 
    private final List<String> mBeanServerCheckedMethods = List.of("invoke", "getAttribute", "getAttributes", "setAttribute", "setAttributes", "queryMBeans", "queryNames");
    private final List<String> uncheckedDomains = List.of("hawtio");
+
+   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    private final MBeanServer delegate;
    private volatile ActiveMQServer activeMQServer;
@@ -60,8 +66,19 @@ public class ArtemisRbacInvocationHandler implements GuardInvocationHandler {
       delegate = mbeanServer;
    }
 
+
    @Override
    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+
+   logger.error("[JMX INVOKE] method=" + method.getName() +
+                      " args=" + java.util.Arrays.toString(args));
+
+
+if (method.getName().startsWith("query")) {
+   logger.warn("[JMX QUERY] " + method.getName() +
+                      " objectName=" + (args != null ? args[0] : "null"));
+}
+
 
       initAuditLoggerContext();
 
@@ -195,7 +212,7 @@ public class ArtemisRbacInvocationHandler implements GuardInvocationHandler {
 
    // derive address to check from the method and args and then check relevant permission
    void securityCheck(Method method, Object[] args) {
-
+      logger.warn("[RBAC CHECK] method=" + method.getName());
       if (isUncheckedDomain(args)) {
          return;
       }
@@ -344,8 +361,14 @@ public class ArtemisRbacInvocationHandler implements GuardInvocationHandler {
 
    private void securityStoreCheck(SimpleString rbacAddress, CheckType checkType) throws Exception {
       // use accessor as security store can be updated on config reload
+
+      long start = System.nanoTime();
+
       activeMQServer.getSecurityStore().check(rbacAddress, checkType, delegateToAccessController);
-   }
+
+      long duration = System.nanoTime() - start;
+
+      logger.warn("[RBAC CHECK] address=took=" + duration + " ns");}
 
    // sufficiently empty to delegate to use of AccessController
    // ideally AccessController should be the source of truth

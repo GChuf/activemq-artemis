@@ -150,6 +150,29 @@ public class SecurityManagerUtil {
       }
       */
 
+
+//logging
+      boolean authorized2 = false;
+
+      long f0 = System.nanoTime();
+      if (authorized2) {
+         logger.trace("user is authorized");
+      } else {
+         logger.trace("user is NOT authorized");
+      }
+      long f1 = System.nanoTime();
+      if (logger.isTraceEnabled()) {
+         logger.trace("user is authorized: {}", authorized2);
+      }
+      long f2 = System.nanoTime();
+
+      logger.warn(
+         "Logging: old {}ns | new {}ns",
+         (f1 - f0),
+         (f2 - f1)
+      );
+
+
    long t0 = System.nanoTime();
 
    if (subject != null) {
@@ -158,10 +181,12 @@ public class SecurityManagerUtil {
       long t1 = System.nanoTime();
       Set<RolePrincipal> rolesWithPermission =
          getPrincipalsInRole(checkType, roles, rolePrincipalClass);
+         //41k
       long t2 = System.nanoTime();
 
       // --- getPrincipals ---
       Set<Principal> rolesForSubject;
+      //31k
       long t3 = System.nanoTime();
       try {
          rolesForSubject = subject.getPrincipals(rolePrincipalClass);
