@@ -35,7 +35,10 @@ import javax.security.auth.Subject;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.security.Principal;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
 
@@ -127,7 +130,11 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
 
    @Override
    public boolean canInvoke(String object, String operationName) {
+      //logger.warn("can invoke called with op name and object: {} / {}", operationName, object);
+      long t0 = System.nanoTime();
       ObjectName objectName = null;
+
+
       try {
          objectName = ObjectName.getInstance(object);
       } catch (MalformedObjectNameException e) {
@@ -142,22 +149,64 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
        * it. Since it is just an optimisation it is fine to always return true. Note that the alternative
        * ArtemisRbacInvocationHandler does allow the ability to restrict a whole mbean.
        */
+
+      //gasperc operation name null return true early
+      //saves 500ns bypass
+      //idk how much it saves for object name and try catch
+      long t00 = System.nanoTime();
+
+      //logger.warn("early null op name would save additional {} ns", (t00 - t0)); //2000-5000ns
       if (operationName == null || canBypassRBAC(objectName)) {
          return true;
       }
-
+      long t01 = System.nanoTime();
+      //logger.warn("time taken: {} ns (canBypassRBAC: {} ns)", (t01 - t00), (t01 - t00));
       // Strip the parameter list from operationName.
       int paramListIndex = operationName.indexOf('(');
       if (paramListIndex > 0) {
          operationName = operationName.substring(0, paramListIndex);
       }
 
-      List<String> requiredRoles = getRequiredRoles(objectName, operationName);
+
+      
+      long i0 = System.nanoTime();
+      Set<String> currentUserRoles = getCurrentUserRoles();
+
+      boolean isOk = jmxAccessControlList.getRolesForObject2(objectName, operationName, currentUserRoles); // same as below, 1ms with 1 log?
+      long i1 = System.nanoTime();
+      logger.warn("time taken (boolean): {} ns ({}) ", (i1 - i0), isOk);
+
+      long t1 = System.nanoTime();
+      //gasperc here i return all roles, but the goal is to see if user has one of the required roles
+      //therefore pass role to getRewquiredRoles and exit early?
+
+      List<String> requiredRoles = getRequiredRoles(objectName, operationName); //biggest cost, 1ms with 1 log?
+
+
+
+      //bool only instead of list and comparing
+
+
+
+
+      long t2 = System.nanoTime();
+      boolean au;
+      au = false;
+      //gasperc 700ns, change to "contains", should befaster
       for (String role : requiredRoles) {
          if (currentUserHasRole(role)) {
-            return true;
+            
+            au = true;
+            break;
          }
       }
+      long t3 = System.nanoTime();
+      if (au = true) {
+            //logger.warn("time taken: {} ns (getRequiredRoles: {} ns, currentUserHasRole: {} ns)", (t3 - t0), (t2 - t1), (t3 - t2));
+            logger.warn("time taken (roles): {} ns ", (t3 - t1));
+            return true;
+      }
+
       logger.debug("{} {} false", object, operationName);
       return false;
    }
@@ -186,7 +235,7 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       this.jmxAccessControlList = JMXAccessControlList;
    }
 
-   public static boolean currentUserHasRole(String requestedRole) {
+   public static boolean currentUserHasRole(String requestedRole) { //gasperc check this as well (700ns?)
 
       String clazz;
       String role;
@@ -210,4 +259,20 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       }
       return false;
    }
+
+   //gasperc add all roles
+public static Set<String> getCurrentUserRoles() {
+   Subject subject = SecurityManagerShim.currentSubject();
+   if (subject == null) {
+      return Collections.emptySet();
+   }
+
+   Set<String> roles = new HashSet<>();
+   for (Principal p : subject.getPrincipals()) {
+      roles.add(p.getName());
+   }
+   return roles;
+}
+
+
 }
