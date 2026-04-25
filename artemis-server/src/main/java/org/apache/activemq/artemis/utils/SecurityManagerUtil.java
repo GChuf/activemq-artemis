@@ -123,6 +123,10 @@ public class SecurityManagerUtil {
       if (subject != null) {
          Set<RolePrincipal> rolesWithPermission = getPrincipalsInRole(checkType, roles, rolePrincipalClass);
 
+         if (rolesWithPermission.isEmpty()) {
+            return false;
+         }
+
          // Check the caller's roles
          Set<Principal> rolesForSubject;
          try {
@@ -131,7 +135,7 @@ public class SecurityManagerUtil {
             ActiveMQServerLogger.LOGGER.failedToFindRolesForTheSubject(e);
             return false;
          }
-         if (!rolesForSubject.isEmpty() && !rolesWithPermission.isEmpty()) {
+         if (!rolesForSubject.isEmpty()) {
             for (Principal subjectRole : rolesForSubject) {
                if (rolesWithPermission.contains(subjectRole)) {
                   logger.trace("user is authorized");
