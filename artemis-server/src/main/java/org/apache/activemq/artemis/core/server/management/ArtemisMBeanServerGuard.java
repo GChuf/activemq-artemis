@@ -38,13 +38,17 @@ import java.security.Principal;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
 
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    private JMXAccessControlList jmxAccessControlList = JMXAccessControlList.createDefaultList();
+
+   private final Map<ObjectName, Boolean> bypassCache = new ConcurrentHashMap<>();
 
    public void init() {
       ArtemisMBeanServerBuilder.setGuard(this);
@@ -125,12 +129,17 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
    }
 
    private boolean canBypassRBAC(ObjectName objectName) {
-      return jmxAccessControlList.isInAllowList(objectName);
+         return bypassCache.computeIfAbsent(objectName, name -> jmxAccessControlList.isInAllowList(name));
    }
 
    @Override
    public boolean canInvoke(String object, String operationName) {
       //logger.warn("can invoke called with op name and object: {} / {}", operationName, object);
+
+      if (operationName == null) {
+         return true;
+      }
+
       long t0 = System.nanoTime();
       ObjectName objectName = null;
 
@@ -153,13 +162,12 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       //gasperc operation name null return true early
       //saves 500ns bypass
       //idk how much it saves for object name and try catch
-      long t00 = System.nanoTime();
 
       //logger.warn("early null op name would save additional {} ns", (t00 - t0)); //2000-5000ns
-      if (operationName == null || canBypassRBAC(objectName)) {
+      if (canBypassRBAC(objectName)) {
          return true;
       }
-      long t01 = System.nanoTime();
+
       //logger.warn("time taken: {} ns (canBypassRBAC: {} ns)", (t01 - t00), (t01 - t00));
       // Strip the parameter list from operationName.
       int paramListIndex = operationName.indexOf('(');
@@ -167,49 +175,18 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
          operationName = operationName.substring(0, paramListIndex);
       }
 
-
-      
-      long i0 = System.nanoTime();
       Set<String> currentUserRoles = getCurrentUserRoles();
-
-      boolean isOk = jmxAccessControlList.getRolesForObject2(objectName, operationName, currentUserRoles); // same as below, 1ms with 1 log?
-      long i1 = System.nanoTime();
-      logger.warn("time taken (boolean): {} ns ({}) ", (i1 - i0), isOk);
-
-      long t1 = System.nanoTime();
-      //gasperc here i return all roles, but the goal is to see if user has one of the required roles
-      //therefore pass role to getRewquiredRoles and exit early?
-
-      List<String> requiredRoles = getRequiredRoles(objectName, operationName); //biggest cost, 1ms with 1 log?
-
-
-
-      //bool only instead of list and comparing
-
-
-
-
-      long t2 = System.nanoTime();
-      boolean au;
-      au = false;
-      //gasperc 700ns, change to "contains", should befaster
-      //not here if I pass userRoles (and calculate them only once) to getRolesForObject2
-      for (String role : requiredRoles) {
-         if (currentUserHasRole(role)) {
-            
-            au = true;
-            break;
-         }
-      }
-      long t3 = System.nanoTime();
-      if (au = true) {
-            //logger.warn("time taken: {} ns (getRequiredRoles: {} ns, currentUserHasRole: {} ns)", (t3 - t0), (t2 - t1), (t3 - t2));
-            logger.warn("time taken (roles): {} ns ", (t3 - t1));
-            return true;
+      if (currentUserRoles.isEmpty()) {
+         return false;
       }
 
-      logger.debug("{} {} false", object, operationName);
-      return false;
+
+      boolean ok = getRequiredRoles2(objectName, operationName, currentUserRoles);
+
+      long t01 = System.nanoTime();
+      logger.warn("time taken: {} ns)", (t01 - t0));
+      return ok;
+
    }
 
    void handleInvoke(ObjectName objectName, String operationName) throws IOException {
@@ -231,6 +208,11 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
    List<String> getRequiredRoles(ObjectName objectName, String methodName) {
       return jmxAccessControlList.getRolesForObject(objectName, methodName);
    }
+
+   boolean getRequiredRoles2(ObjectName objectName, String methodName, Set<String> userRoles) {
+      return jmxAccessControlList.getRolesForObject2(objectName, methodName, userRoles);
+   }
+
 
    public void setJMXAccessControlList(JMXAccessControlList JMXAccessControlList) {
       this.jmxAccessControlList = JMXAccessControlList;

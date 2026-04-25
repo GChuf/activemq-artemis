@@ -71,6 +71,7 @@ public class JMXAccessControlList {
 
    public List<String> getRolesForObject(ObjectName objectName, String methodName) {
       //logger.warn("getRolesForObject called with object name {}", objectName);
+
       long t0 = System.nanoTime();
       TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
       long t1 = System.nanoTime();
@@ -78,6 +79,7 @@ public class JMXAccessControlList {
       long t11 = System.nanoTime();
       if (domainMap != null) {
          Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+         logger.warn("DEBUG: Object [" + objectName.getCanonicalName() + "] has " + keyPropertyList.size() + " properties."); //size is 3
          long t2 = System.nanoTime();
 
          //logger.warn("getRolesForObject key property list retrieval time: {} ns", (t2 - t11)); //4000 ns, biggest
@@ -87,7 +89,12 @@ public class JMXAccessControlList {
             long t3 = System.nanoTime();
             //logger.warn("getRolesForObject key normalization time: {} ns", (t3 - t21)); //500 ns
 
+
+
+
+
             for (Access accessEntry : domainMap.values()) {
+               logger.warn("DEBUG: Testing Pair [" + key + "] against Pattern [" + accessEntry.getKeyPattern().pattern() + "]");
                long t4 = System.nanoTime();
 
                boolean matches = accessEntry.getKeyPattern().matcher(key).matches();
@@ -96,8 +103,17 @@ public class JMXAccessControlList {
 
                if (matches) {
                   long t6 = System.nanoTime();
+                  int accessId = System.identityHashCode(accessEntry); 
                   List<String> matchingRoles = accessEntry.getMatchingRolesForMethod(methodName); //gasperc this should be cached per method maybe
                                                                                                  //idk if it changes by address
+                  // Check the identity of the accessEntry object itself
+
+
+
+                  // DEBUG: Verify stability
+                  logger.warn("DEBUG: AccessEntry ID: " + accessId + 
+                                      " | Method: " + methodName + 
+                                      " | Roles: " + matchingRoles);                                                                        
                   long t7 = System.nanoTime();
                   //logger.warn("getRolesForObject get matching roles time: {} ns", (t7 - t6)); //2000 - 4000ns, second biggest
                   return matchingRoles;
@@ -121,38 +137,47 @@ public class JMXAccessControlList {
       //logger.warn("getRolesForObject called with object name {}", objectName);
       long t0 = System.nanoTime();
       TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
-      long t1 = System.nanoTime();
-      logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500ns
-      long t11 = System.nanoTime();
+      //logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500ns
+
       if (domainMap != null) {
          Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
-         long t2 = System.nanoTime();
+
 
          //logger.warn("getRolesForObject key property list retrieval time: {} ns", (t2 - t11)); //4000 ns
-         long t21 = System.nanoTime();
+
          for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
-            String key = normalizeKey(keyEntry.getKey() + "=" + keyEntry.getValue()); 
-            long t3 = System.nanoTime();
-            //logger.warn("getRolesForObject key normalization time: {} ns", (t3 - t21)); //500ns
+
+
+            // filter out "prefixes"
+
+            // accessEntry.getKeyPattern().pattern() should start with keyEntry.getKey() (queue, address, ...) 
+            // only after that check for keyEntry.getValue() match
+            String prefixFilter = keyEntry.getKey() + "="; // e.g., "address="
+            String key = normalizeKey(prefixFilter + keyEntry.getValue());
+
+
+            //2026-04-25 12:14:16,759 WARN  [org.apache.activemq.artemis.core.server.management.JMXAccessControlList] DEBUG: Testing Pair [address=QUEUE.ADDRESS619] against Pattern [queue=DLQ.QUEUE.ADDRESS110]
 
             for (Access accessEntry : domainMap.values()) {
-               long t4 = System.nanoTime();
 
-               boolean matches = accessEntry.getKeyPattern().matcher(key).matches();
-               long t5 = System.nanoTime();
-               //logger.warn("matches time: {} ns", (t5 - t4)); //500ns
 
-               if (matches) {
-                  long t6 = System.nanoTime();
-                  boolean matchingRoles = accessEntry.getMatchingRolesForMethod2(methodName, userRoles);
-                  long t7 = System.nanoTime();
-                  //logger.warn("getRolesForObject get matching roles time: {} ns", (t7 - t6)); //500ns
-                  return matchingRoles;
-               }
+               String rawPattern = accessEntry.getKeyPattern().pattern();
+
+               if (rawPattern.startsWith(prefixFilter)) {
+                
+                 // If the pattern doesn't contain regex characters (*, [, +, etc.),use a simple equals() check.
+                  if (key.equals(rawPattern)) { 
+                     return true;
+                  }
+
+                  // regexp check if previous did not return true
+                  if (accessEntry.getKeyPattern().matcher(key).matches()) {
+                     return true;
+                  }
+               } 
+
             }
          }
-
-
 
          Access access = domainMap.get("");
          if (access != null) {
@@ -310,17 +335,33 @@ public class JMXAccessControlList {
       public boolean getMatchingRolesForMethod2(String methodName, Set<String> userRoles) {
          //gasperc use hashset insteadf of list for userRoles
          List<String> roles = methodRoles.get(methodName);
+
+         if (roles != null) {
+            for (String role : roles) {
+               if (userRoles.contains(role)) {
+                  return true;
+               }
+            }
+         }
+
+         /*
          if (roles != null) {
             boolean contains = !Collections.disjoint(roles, userRoles); //for list
 
+
+
+
             return contains;
          }
+         */
+
+
          for (Map.Entry<String, List<String>> entry : methodPrefixRoles.entrySet()) {
             if (methodName.startsWith(entry.getKey())) {
                return true;
             }
          }
-         return true;
+         return false;
       }
 
    }
