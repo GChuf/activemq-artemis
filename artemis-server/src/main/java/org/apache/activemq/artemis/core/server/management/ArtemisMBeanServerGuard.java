@@ -193,6 +193,7 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       boolean au;
       au = false;
       //gasperc 700ns, change to "contains", should befaster
+      //not here if I pass userRoles (and calculate them only once) to getRolesForObject2
       for (String role : requiredRoles) {
          if (currentUserHasRole(role)) {
             
