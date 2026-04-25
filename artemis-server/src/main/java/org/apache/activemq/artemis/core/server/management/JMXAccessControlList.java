@@ -41,6 +41,24 @@ public class JMXAccessControlList {
 
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+   /*
+   private final Map<ObjectName, Map<String, String>> keyPropertyCache = 
+      Collections.synchronizedMap(new LinkedHashMap<ObjectName, Map<String, String>>(1024, 0.75f, true) {
+         @Override
+         protected boolean removeEldestEntry(Map.Entry<ObjectName, Map<String, String>> eldest) {
+               return size() > 30000;
+         }
+      });
+*/
+   private final Map<String, Map<String, String>> keyPropertyCache = 
+      Collections.synchronizedMap(new LinkedHashMap<String, Map<String, String>>(128, 0.75f, true) {
+         @Override
+         protected boolean removeEldestEntry(Map.Entry<String, Map<String, String>> eldest) {
+               return size() > 5000; 
+         }
+      });
+
+
    private Access defaultAccess = new Access(WILDCARD);
    private ConcurrentMap<String, TreeMap<String, Access>> domainAccess = new ConcurrentHashMap<>();
    private ConcurrentMap<String, TreeMap<String, Access>> allowList = new ConcurrentHashMap<>();
@@ -78,7 +96,22 @@ public class JMXAccessControlList {
       //logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500 ns
       long t11 = System.nanoTime();
       if (domainMap != null) {
-         Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+
+         //Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+
+         // 1. CACHE LOOKUP: Avoid the expensive objectName.getKeyPropertyList() clone
+         // SynchronizedMap handles thread safety; LinkedHashMap handles the LRU logic.
+
+
+         //Map<String, String> keyPropertyList = keyPropertyCache.computeIfAbsent(objectName, name -> name.getKeyPropertyList());
+         String cacheKey = objectName.getCanonicalName();
+         Map<String, String> keyPropertyList = keyPropertyCache.get(cacheKey);
+         if (keyPropertyList == null) {
+               keyPropertyList = objectName.getKeyPropertyList();
+               keyPropertyCache.put(cacheKey, keyPropertyList);
+         }
+
+
          logger.warn("DEBUG: Object [" + objectName.getCanonicalName() + "] has " + keyPropertyList.size() + " properties."); //size is 3
          long t2 = System.nanoTime();
 
@@ -140,10 +173,20 @@ public class JMXAccessControlList {
       //logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500ns
 
       if (domainMap != null) {
-         Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+         //Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+         // 1. CACHE LOOKUP: Avoid the expensive objectName.getKeyPropertyList() clone
+         // SynchronizedMap handles thread safety; LinkedHashMap handles the LRU logic.
+         //Map<String, String> keyPropertyList = keyPropertyCache.computeIfAbsent(objectName, name -> name.getKeyPropertyList());
+         String cacheKey = objectName.getCanonicalName();
+         Map<String, String> keyPropertyList = keyPropertyCache.get(cacheKey);
+         if (keyPropertyList == null) {
+               keyPropertyList = objectName.getKeyPropertyList();
+               keyPropertyCache.put(cacheKey, keyPropertyList);
+         }
 
+         long t1 = System.nanoTime();
 
-         //logger.warn("getRolesForObject key property list retrieval time: {} ns", (t2 - t11)); //4000 ns
+         logger.warn("keyPropertyCache retrieval time: {} ns", (t1 - t0)); //4000 ns -> to 200ns with cache
 
          for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
 
@@ -167,14 +210,18 @@ public class JMXAccessControlList {
                 
                  // If the pattern doesn't contain regex characters (*, [, +, etc.),use a simple equals() check.
                   if (key.equals(rawPattern)) { 
+                     //logger.warn("exact match");
                      return true;
                   }
 
                   // regexp check if previous did not return true
                   if (accessEntry.getKeyPattern().matcher(key).matches()) {
+                     //logger.warn("regex match");
                      return true;
                   }
-               } 
+               } else {
+                  //logger.warn("skipping - prefix mismatch");
+               }
 
             }
          }

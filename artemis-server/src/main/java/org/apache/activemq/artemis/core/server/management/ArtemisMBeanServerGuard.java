@@ -180,10 +180,12 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
          return false;
       }
 
-
+      long t03 = System.nanoTime();
       boolean ok = getRequiredRoles2(objectName, operationName, currentUserRoles);
+      //boolean ok = jmxAccessControlList.getRolesForObject2(objectName, operationName, currentUserRoles);
 
       long t01 = System.nanoTime();
+      logger.warn("roles time taken: {} ns)", (t01 - t03));
       logger.warn("time taken: {} ns)", (t01 - t0));
       return ok;
 
