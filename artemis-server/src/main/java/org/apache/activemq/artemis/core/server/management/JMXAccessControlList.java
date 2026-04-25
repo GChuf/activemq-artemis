@@ -18,6 +18,7 @@ package org.apache.activemq.artemis.core.server.management;
 
 import javax.management.ObjectName;
 
+import org.apache.activemq.artemis.core.server.management.JMXAccessControlList.Access;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,25 @@ public class JMXAccessControlList {
          }
       });
 
+private final Map<String, TreeMap<String, Access>> domainCache = 
+    Collections.synchronizedMap(new LinkedHashMap<String, TreeMap<String, Access>>(128, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, TreeMap<String, Access>> eldest) {
+            return size() > 5000;
+        }
+    });
+
+
+// Cache Key: Domain Name
+// Cache Value: Map where Key is "prefix" (e.g. "address") and Value is List of matching Access objects
+private final Map<String, Map<String, List<Access>>> bucketedDomainCache = 
+    Collections.synchronizedMap(new LinkedHashMap<String, Map<String, List<Access>>>(128, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Map<String, List<Access>>> eldest) {
+            return size() > 10000; // Smaller limit as this is a more complex object
+        }
+    });
+
 
    private Access defaultAccess = new Access(WILDCARD);
    private ConcurrentMap<String, TreeMap<String, Access>> domainAccess = new ConcurrentHashMap<>();
@@ -87,106 +107,62 @@ public class JMXAccessControlList {
    }
 
 
-   public List<String> getRolesForObject(ObjectName objectName, String methodName) {
-      //logger.warn("getRolesForObject called with object name {}", objectName);
-
-      long t0 = System.nanoTime();
-      TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
-      long t1 = System.nanoTime();
-      //logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500 ns
-      long t11 = System.nanoTime();
-      if (domainMap != null) {
-
-         //Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
-
-         // 1. CACHE LOOKUP: Avoid the expensive objectName.getKeyPropertyList() clone
-         // SynchronizedMap handles thread safety; LinkedHashMap handles the LRU logic.
 
 
-         //Map<String, String> keyPropertyList = keyPropertyCache.computeIfAbsent(objectName, name -> name.getKeyPropertyList());
-         String cacheKey = objectName.getCanonicalName();
-         Map<String, String> keyPropertyList = keyPropertyCache.get(cacheKey);
-         if (keyPropertyList == null) {
-               keyPropertyList = objectName.getKeyPropertyList();
-               keyPropertyCache.put(cacheKey, keyPropertyList);
-         }
-
-
-         logger.warn("DEBUG: Object [" + objectName.getCanonicalName() + "] has " + keyPropertyList.size() + " properties."); //size is 3
-         long t2 = System.nanoTime();
-
-         //logger.warn("getRolesForObject key property list retrieval time: {} ns", (t2 - t11)); //4000 ns, biggest
-         long t21 = System.nanoTime();
-         for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
-            String key = normalizeKey(keyEntry.getKey() + "=" + keyEntry.getValue()); 
-            long t3 = System.nanoTime();
-            //logger.warn("getRolesForObject key normalization time: {} ns", (t3 - t21)); //500 ns
-
-
-
-
-
-            for (Access accessEntry : domainMap.values()) {
-               logger.warn("DEBUG: Testing Pair [" + key + "] against Pattern [" + accessEntry.getKeyPattern().pattern() + "]");
-               long t4 = System.nanoTime();
-
-               boolean matches = accessEntry.getKeyPattern().matcher(key).matches();
-               long t5 = System.nanoTime();
-               //logger.warn("matches time: {} ns", (t5 - t4)); // 500ns
-
-               if (matches) {
-                  long t6 = System.nanoTime();
-                  int accessId = System.identityHashCode(accessEntry); 
-                  List<String> matchingRoles = accessEntry.getMatchingRolesForMethod(methodName); //gasperc this should be cached per method maybe
-                                                                                                 //idk if it changes by address
-                  // Check the identity of the accessEntry object itself
-
-
-
-                  // DEBUG: Verify stability
-                  logger.warn("DEBUG: AccessEntry ID: " + accessId + 
-                                      " | Method: " + methodName + 
-                                      " | Roles: " + matchingRoles);                                                                        
-                  long t7 = System.nanoTime();
-                  //logger.warn("getRolesForObject get matching roles time: {} ns", (t7 - t6)); //2000 - 4000ns, second biggest
-                  return matchingRoles;
-               }
-            }
-         }
-
-
-
-         Access access = domainMap.get("");
-         if (access != null) {
-            return access.getMatchingRolesForMethod(methodName);
-         }
-      }
-
-      return defaultAccess.getMatchingRolesForMethod(methodName);
-   }
 
 
    public boolean getRolesForObject2(ObjectName objectName, String methodName, Set<String> userRoles) {
       //logger.warn("getRolesForObject called with object name {}", objectName);
       long t0 = System.nanoTime();
-      TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
+      //TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
       //logger.warn("getRolesForObject domain map lookup time: {} ns", (t1 - t0)); //500ns
+      String domainKey = objectName.getDomain();
 
-      if (domainMap != null) {
+      // computeIfAbsent is atomic and more efficient than manual null checks
+      /*
+      TreeMap<String, Access> domainMap = domainCache.computeIfAbsent(domainKey, key -> 
+         domainAccess.get(key)
+      );
+*/
+      TreeMap<String, Access> domainMap = domainCache.computeIfAbsent(objectName.getDomain(), key -> 
+         domainAccess.get(key)
+      );
+
+
+// 1. Get or Build the Bucketed Map for this domain
+    Map<String, List<Access>> bucketedMap = bucketedDomainCache.computeIfAbsent(domainKey, d -> {
+        TreeMap<String, Access> rawMap = domainAccess.get(d);
+        if (rawMap == null) return null;
+
+        Map<String, List<Access>> grouped = new HashMap<>();
+        for (Access access : rawMap.values()) {
+            String pattern = access.getKeyPattern().pattern();
+            // Extract prefix (e.g., "address" from "address=QUEUE.A")
+            int eqIndex = pattern.indexOf('=');
+            String prefix = (eqIndex != -1) ? pattern.substring(0, eqIndex) : "";
+            
+            grouped.computeIfAbsent(prefix, k -> new ArrayList<>()).add(access);
+        }
+        return grouped;
+    });
+
+
+
+
+
+      if (bucketedMap != null) {
          //Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
          // 1. CACHE LOOKUP: Avoid the expensive objectName.getKeyPropertyList() clone
          // SynchronizedMap handles thread safety; LinkedHashMap handles the LRU logic.
          //Map<String, String> keyPropertyList = keyPropertyCache.computeIfAbsent(objectName, name -> name.getKeyPropertyList());
          String cacheKey = objectName.getCanonicalName();
-         Map<String, String> keyPropertyList = keyPropertyCache.get(cacheKey);
-         if (keyPropertyList == null) {
-               keyPropertyList = objectName.getKeyPropertyList();
-               keyPropertyCache.put(cacheKey, keyPropertyList);
-         }
+         Map<String, String> keyPropertyList = keyPropertyCache.computeIfAbsent(cacheKey, k -> 
+            objectName.getKeyPropertyList()
+         );
 
          long t1 = System.nanoTime();
 
-         logger.warn("keyPropertyCache retrieval time: {} ns", (t1 - t0)); //4000 ns -> to 200ns with cache
+         //logger.warn("keyPropertyCache retrieval time: {} ns", (t1 - t0)); //4000 ns -> to 200ns with cache
 
          for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
 
@@ -196,34 +172,36 @@ public class JMXAccessControlList {
             // accessEntry.getKeyPattern().pattern() should start with keyEntry.getKey() (queue, address, ...) 
             // only after that check for keyEntry.getValue() match
             String prefixFilter = keyEntry.getKey() + "="; // e.g., "address="
-            String key = normalizeKey(prefixFilter + keyEntry.getValue());
 
+
+
+            //filter out relevant access entries based on prefix 
+
+            List<Access> relevantAccessEntries = bucketedMap.get(keyEntry.getKey());
+
+
+            if (relevantAccessEntries != null) {
+               String key = normalizeKey(prefixFilter + keyEntry.getValue()); //gasperc todo save this together with keyPropertyCache
+               
+               for (Access access : relevantAccessEntries) {
+                  String rawPattern = access.getKeyPattern().pattern();
+                  
+                  // Still need to check specific value, but only for the correct prefix
+                     if (key.equals(rawPattern)) { 
+                        //logger.warn("exact match");
+                        return true;
+                     }
+
+                     // regexp check if previous did not return true
+                     if (access.getKeyPattern().matcher(key).matches()) {
+                        //logger.warn("regex match");
+                        return true;
+                     }
+               }
+            }
 
             //2026-04-25 12:14:16,759 WARN  [org.apache.activemq.artemis.core.server.management.JMXAccessControlList] DEBUG: Testing Pair [address=QUEUE.ADDRESS619] against Pattern [queue=DLQ.QUEUE.ADDRESS110]
 
-            for (Access accessEntry : domainMap.values()) {
-
-
-               String rawPattern = accessEntry.getKeyPattern().pattern();
-
-               if (rawPattern.startsWith(prefixFilter)) {
-                
-                 // If the pattern doesn't contain regex characters (*, [, +, etc.),use a simple equals() check.
-                  if (key.equals(rawPattern)) { 
-                     //logger.warn("exact match");
-                     return true;
-                  }
-
-                  // regexp check if previous did not return true
-                  if (accessEntry.getKeyPattern().matcher(key).matches()) {
-                     //logger.warn("regex match");
-                     return true;
-                  }
-               } else {
-                  //logger.warn("skipping - prefix mismatch");
-               }
-
-            }
          }
 
          Access access = domainMap.get("");
