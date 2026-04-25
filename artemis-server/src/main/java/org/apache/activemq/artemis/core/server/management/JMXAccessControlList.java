@@ -107,7 +107,27 @@ private final Map<String, Map<String, List<Access>>> bucketedDomainCache =
    }
 
 
+   public List<String> getRolesForObject(ObjectName objectName, String methodName) {
+      TreeMap<String, Access> domainMap = domainAccess.get(objectName.getDomain());
+      if (domainMap != null) {
+         Map<String, String> keyPropertyList = objectName.getKeyPropertyList();
+         for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
+            String key = normalizeKey(keyEntry.getKey() + "=" + keyEntry.getValue());
+            for (Access accessEntry : domainMap.values()) {
+               if (accessEntry.getKeyPattern().matcher(key).matches()) {
+                  return accessEntry.getMatchingRolesForMethod(methodName);
+               }
+            }
+         }
 
+         Access access = domainMap.get("");
+         if (access != null) {
+            return access.getMatchingRolesForMethod(methodName);
+         }
+      }
+
+      return defaultAccess.getMatchingRolesForMethod(methodName);
+   }
 
 
 
