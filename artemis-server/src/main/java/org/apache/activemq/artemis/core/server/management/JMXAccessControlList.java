@@ -257,15 +257,15 @@ public class JMXAccessControlList {
       public boolean authorizeUserForMethod(String methodName, Set<String> userRoles) {
          List<String> roles = methodRoles.get(methodName);
          if (roles != null) {
-            boolean authorized = !Collections.disjoint(roles, userRoles); //for list
-            return authorized;
+            return !Collections.disjoint(roles, userRoles);
+
          }
          for (Map.Entry<String, List<String>> entry : methodPrefixRoles.entrySet()) {
             if (methodName.startsWith(entry.getKey())) {
-               return true;
+               return !Collections.disjoint(entry.getValue(), userRoles);
             }
          }
-         return false;
+         return !Collections.disjoint(catchAllRoles, userRoles);
       }
    }
 
