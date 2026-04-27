@@ -166,6 +166,9 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       }
       Set<String> currentUserRoles = getCurrentUserRoles();
 
+      if (currentUserRoles.isEmpty()) {
+         return false;
+      }
 
       boolean authorized = authorizeUserForMethod(objectName, operationName, currentUserRoles);
 
