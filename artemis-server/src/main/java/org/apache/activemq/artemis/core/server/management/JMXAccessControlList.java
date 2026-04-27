@@ -50,11 +50,11 @@ public class JMXAccessControlList {
       return key2.length() - key1.length();
    };
 
-   private final Map<String, Map<String, String>> keyPropertyCache = 
+   private final Map<String, Map<String, String>> keyPropertyCache =
       Collections.synchronizedMap(new LinkedHashMap<String, Map<String, String>>(128, 0.75f, true) {
          @Override
          protected boolean removeEldestEntry(Map.Entry<String, Map<String, String>> eldest) {
-               return size() > 5000; 
+               return size() > 5000;
          }
       });
 
@@ -100,8 +100,8 @@ public class JMXAccessControlList {
          String cacheKey = objectName.getCanonicalName();
          Map<String, String> keyPropertyList = keyPropertyCache.get(cacheKey);
          if (keyPropertyList == null) {
-               keyPropertyList = objectName.getKeyPropertyList();
-               keyPropertyCache.put(cacheKey, keyPropertyList);
+            keyPropertyList = objectName.getKeyPropertyList();
+            keyPropertyCache.put(cacheKey, keyPropertyList);
          }
 
          for (Map.Entry<String, String> keyEntry : keyPropertyList.entrySet()) {
