@@ -265,9 +265,8 @@ public class JMXAccessControlList {
                return true;
             }
          }
-         return true;
+         return false;
       }
-
    }
 
    public static JMXAccessControlList createDefaultList() {
