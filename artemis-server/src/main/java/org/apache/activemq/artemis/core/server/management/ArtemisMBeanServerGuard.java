@@ -23,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.lang.invoke.MethodHandles;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.JMException;
@@ -44,6 +46,8 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    private JMXAccessControlList jmxAccessControlList = JMXAccessControlList.createDefaultList();
+
+   private final Cache<ObjectName, Boolean> bypassRBACCache = Caffeine.newBuilder().maximumSize(10000).build();
 
    public void init() {
       ArtemisMBeanServerBuilder.setGuard(this);
@@ -120,7 +124,7 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
    }
 
    private boolean canBypassRBAC(ObjectName objectName) {
-      return jmxAccessControlList.isInAllowList(objectName);
+      return bypassRBACCache.get(objectName, jmxAccessControlList::isInAllowList);
    }
 
    @Override
@@ -157,6 +161,9 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       }
       Set<String> currentUserRoles = getCurrentUserRoles();
 
+      if (currentUserRoles.isEmpty()) {
+         return false;
+      }
       boolean authorized = authorizeUserForMethod(objectName, operationName, currentUserRoles);
 
       if (authorized) {
