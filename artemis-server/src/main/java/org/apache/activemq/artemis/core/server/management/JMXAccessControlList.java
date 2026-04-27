@@ -94,7 +94,7 @@ public class JMXAccessControlList {
             String key = normalizeKey(keyEntry.getKey() + "=" + keyEntry.getValue());
             for (Access accessEntry : domainMap.values()) {
                String rawPattern = accessEntry.getKeyPattern().pattern();
-               if (rawPattern.startsWith(prefixFilter)) {}
+               if (rawPattern.startsWith(prefixFilter)) {
                   if (key.equals(rawPattern)) {
                      return true;
                   }
