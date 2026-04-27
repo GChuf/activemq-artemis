@@ -111,11 +111,11 @@ public class JMXAccessControlList {
                String rawPattern = accessEntry.getKeyPattern().pattern();
                if (rawPattern.startsWith(prefixFilter)) {
                   if (key.equals(rawPattern)) {
-                     return true;
+                     return accessEntry.authorizeUserForMethod(methodName, userRoles);
                   }
                   // regexp check if previous did not return true
                   if (accessEntry.getKeyPattern().matcher(key).matches()) {
-                     return true;
+                     return accessEntry.authorizeUserForMethod(methodName, userRoles);
                   }
                }
             }
