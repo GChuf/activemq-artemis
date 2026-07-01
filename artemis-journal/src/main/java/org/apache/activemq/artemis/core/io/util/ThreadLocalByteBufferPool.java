@@ -53,6 +53,24 @@ final class ThreadLocalByteBufferPool implements ByteBufferPool {
       return byteBuffer;
    }
 
+   public ByteBuffer borrowNoDirectCheck(final int size, boolean zeroed) {
+      final int requiredCapacity = PowerOf2Util.align(size, Env.hugePageSize());
+      ByteBuffer byteBuffer = bytesPool.get();
+      if (byteBuffer == null || requiredCapacity > byteBuffer.capacity()) {
+         //do not free the old one (if any) until the new one will be released into the pool!
+         byteBuffer = ByteBuffer.allocateDirect(requiredCapacity);
+      } else {
+         bytesPool.set(null);
+         if (zeroed) {
+            byteBuffer.clear();
+            ByteUtil.zeros(byteBuffer, 0, size);
+         }
+         byteBuffer.clear();
+      }
+      byteBuffer.limit(size);
+      return byteBuffer;
+   }
+   
    @Override
    public void release(ByteBuffer buffer) {
       Objects.requireNonNull(buffer);
