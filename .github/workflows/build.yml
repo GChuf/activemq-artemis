@@ -37,6 +37,8 @@ jobs:
         java: [ 17, 21, 25 ]
     steps:
       - uses: actions/checkout@v7
+        with:
+          path: artemis
 
       - name: Cache Maven Local Repo (Read/Write)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
@@ -168,7 +170,6 @@ jobs:
       - name: Build Main (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
-          ls -al
           cd artemis
           mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip -Pcompatibility-tests -DskipCompatibilityTests install
 
