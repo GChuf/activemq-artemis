@@ -59,12 +59,10 @@ jobs:
       # Maven compiles using the correct matrix JDK here
       - name: Compile and Install Core
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml -DskipTests clean install
 
       - name: Additional Cache Priming
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml clean verify -Prelease -Denforcer.skip -pl "artemis-unit-test-support,org.apache.artemis:artemis-junit-5"
           CURRENT_ERRORPRONE_VERSION=$(grep -m 1 -Po '(?<=errorprone.version>)[^<]+' pom.xml)
           mvn -s .github/maven-settings.xml dependency:get -Dartifact="com.google.errorprone:error_prone_core:${CURRENT_ERRORPRONE_VERSION}" -pl "."
@@ -121,7 +119,6 @@ jobs:
 
       - name: Fast Tests
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests test
 
       - name: Archive Test Logs
@@ -170,18 +167,15 @@ jobs:
       - name: Build Main (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip -Pcompatibility-tests -DskipCompatibilityTests install
 
       - name: Build Main (JDK <25)
         if: matrix.java != '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml -DskipTests -Pdev -Pjmh -Popenwire-tests -DskipActiveMQ5Tests -Pcompatibility-tests -DskipCompatibilityTests -Dshade-plugin-create-sources=true install
 
       - name: Set Examples Version to Artemis Version
         run: |
-          cd artemis
           CURRENT_ARTEMIS_BUILD_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "Current Artemis version: ${CURRENT_ARTEMIS_BUILD_VERSION}"
           cd ../artemis-examples
@@ -204,23 +198,19 @@ jobs:
       - name: Javadoc Check (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml javadoc:javadoc -Prelease -DskipWebsiteDocGeneration=true -DskipWebsiteJavadocGeneration=true
 
       - name: Javadoc Check (JDK <25)
         if: matrix.java != '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml javadoc:javadoc
 
       - name: Website Content Check (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml clean install -DskipTests -Prelease -am -pl "artemis-website"
 
       - name: Website Content Check (JDK <25)
         if: matrix.java != '25'
         run: |
-          cd artemis
           mvn -s .github/maven-settings.xml clean install -DskipTests -Prelease -Denforcer.skip -am -pl "artemis-website"
