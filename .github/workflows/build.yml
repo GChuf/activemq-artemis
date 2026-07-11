@@ -77,13 +77,18 @@ jobs:
           rm -rf ~/.m2/repository/org/apache/artemis/examples
           if [ -d ~/.m2/repository/org/apache ]; then find ~/.m2/repository/org/apache -name "*-SNAPSHOT" -type d -prune -exec rm -r '{}' \; ; fi
 
-      - name: Upload Compiled Workspace & Local M2
+      - name: Upload Compiled Workspace
         uses: actions/upload-artifact@v7
         with:
-          name: compiled-assets-jdk-${{ matrix.java }}
-          path: |
-            artemis/
-            /home/runner/.m2/repository/org/apache/artemis/
+          name: compiled-workspace-jdk-${{ matrix.java }}
+          path: artemis/
+          retention-days: 1
+
+      - name: Upload Local M2 Artemis Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: compiled-m2-jdk-${{ matrix.java }}
+          path: /home/runner/.m2/repository/org/apache/artemis/
           retention-days: 1
 
   test:
@@ -96,11 +101,17 @@ jobs:
       matrix:
         java: [ 17, 21, 25 ]
     steps:
-      - name: Download Compiled Assets
+      - name: Download Compiled Workspace
         uses: actions/download-artifact@v7
         with:
-          name: compiled-assets-jdk-${{ matrix.java }}
-          path: .
+          name: compiled-workspace-jdk-${{ matrix.java }}
+          path: artemis
+
+      - name: Download Local M2 Artemis Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: compiled-m2-jdk-${{ matrix.java }}
+          path: /home/runner/.m2/repository/org/apache/artemis
 
       - name: Install JDK ${{ matrix.java }}
         uses: actions/setup-java@v5
@@ -131,11 +142,17 @@ jobs:
       matrix:
         java: [ 17, 21, 25 ]
     steps:
-      - name: Download Compiled Assets
+      - name: Download Compiled Workspace
         uses: actions/download-artifact@v7
         with:
-          name: compiled-assets-jdk-${{ matrix.java }}
-          path: .
+          name: compiled-workspace-jdk-${{ matrix.java }}
+          path: artemis
+
+      - name: Download Local M2 Artemis Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: compiled-m2-jdk-${{ matrix.java }}
+          path: /home/runner/.m2/repository/org/apache/artemis
 
       - name: Install JDK ${{ matrix.java }}
         uses: actions/setup-java@v5
