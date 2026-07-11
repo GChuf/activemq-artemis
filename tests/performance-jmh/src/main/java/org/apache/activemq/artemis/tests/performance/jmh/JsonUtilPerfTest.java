@@ -42,22 +42,22 @@ import java.util.concurrent.TimeUnit;
  * to measure the improvement per type.
  */
 @State(Scope.Benchmark)
-@Fork(1)
-@Warmup(iterations = 3, time = 1)
-@Measurement(iterations = 10, time = 1)
+@Fork(2)
+@Warmup(iterations = 4, time = 1)
+@Measurement(iterations = 8, time = 1)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class JsonUtilPerfTest {
 
-   // --- test values, one per supported type ---
+   // test values
    private static final String VAL_STRING1 = "hello-world1";
-   private static final String VAL_STRING2 = "hello-world2";
-   private static final String VAL_STRING3 = "hello-world3";
-   private static final String VAL_STRING4 = "hello-world4";
-   private static final Long VAL_LONG1 = 123456789L;
-   private static final Integer VAL_INT1 = 42;
-   private static final Long VAL_LONG2 = 123455789L;
-   private static final Integer VAL_INT2 = 423;
+   private static final String VAL_STRING2 = "hello-world22222";
+   private static final String VAL_STRING3 = "hello-world3333333333333";
+   private static final String VAL_STRING4 = "hello-world4444444444444444444444444";
+   private static final Long VAL_LONG1 = 0L;
+   private static final Integer VAL_INT1 = 4;
+   private static final Long VAL_LONG2 = 123456789L;
+   private static final Integer VAL_INT2 = 1000000;
    private static final Double VAL_DOUBLE = 3.14159;
    private static final Boolean VAL_BOOL = Boolean.TRUE;
    private static final Boolean VAL_BOOL2 = Boolean.FALSE;
@@ -65,9 +65,9 @@ public class JsonUtilPerfTest {
    private static final Boolean VAL_BOOL4 = Boolean.FALSE;
    private static final Short VAL_SHORT = (short) 7;
    private static final Byte VAL_BYTE = (byte) 3;
-   private static final Byte VAL_BYTE2 = (byte) 3;
-   private static final Byte VAL_BYTE3 = (byte) 2;
-   private static final Byte VAL_BYTE4 = (byte) 1;
+   private static final Byte VAL_BYTE2 = (byte) 2;
+   private static final Byte VAL_BYTE3 = (byte) 1;
+   private static final Byte VAL_BYTE4 = (byte) 0;
    private static final byte[] VAL_BYTES = new byte[]{1, 2, 3, 4, 5};
    private static final byte[] VAL_BYTES2 = new byte[]{1, 2, 3, 4, 5};
    private static final Object[] VAL_ARRAY = new Object[]{"a", 1L, true};
@@ -78,6 +78,9 @@ public class JsonUtilPerfTest {
       VAL_MAP.put("key1", "value1");
       VAL_MAP.put("key2", 42L);
       VAL_MAP.put("key3", true);
+      VAL_MAP.put("key4", 123456);
+      VAL_MAP.put("key5", (byte) 0);
+      VAL_MAP.put("key6", 3.14159);
    }
 
    // --- realistic mixed map: models a typical Artemis message property map ---
