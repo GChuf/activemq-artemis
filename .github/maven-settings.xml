@@ -26,9 +26,11 @@
           <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
           <releases>
             <enabled>true</enabled>
+			<updatePolicy>never</updatePolicy>
           </releases>
           <snapshots>
             <enabled>false</enabled>
+			<updatePolicy>never</updatePolicy>
           </snapshots>
         </repository>
       </repositories>
@@ -39,9 +41,11 @@
           <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
           <releases>
             <enabled>true</enabled>
+			<updatePolicy>never</updatePolicy>
           </releases>
           <snapshots>
             <enabled>false</enabled>
+			<updatePolicy>never</updatePolicy>
           </snapshots>
         </pluginRepository>
       </pluginRepositories>
