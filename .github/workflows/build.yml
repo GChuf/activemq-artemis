@@ -121,6 +121,7 @@ jobs:
 
       - name: Fast Tests
         run: |
+          ls -al
           mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests test
 
       - name: Archive Test Logs
@@ -169,6 +170,7 @@ jobs:
       - name: Build Main (JDK25 / -Prelease)
         if: matrix.java == '25'
         run: |
+          ls -al
           mvn -s .github/maven-settings.xml -DskipTests -Derrorprone -Pdev -Prelease -Dgpg.skip -Pcompatibility-tests -DskipCompatibilityTests install
 
       - name: Build Main (JDK <25)
