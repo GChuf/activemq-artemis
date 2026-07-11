@@ -73,6 +73,10 @@ public class JsonUtilPerfTest {
    private static final Object[] VAL_ARRAY = new Object[]{"a", 1L, true};
    private static final Map<String, Object> VAL_MAP;
 
+   private static final char[] VAL_CHARS = new char[]{'a', 'b', 'c', 'd', 'e'};
+   private static final Integer TRUNCATE_LIMIT_TRIGGER = 3;
+   private static final Integer TRUNCATE_LIMIT_NO_OP = 100;
+
    static {
       VAL_MAP = new LinkedHashMap<>();
       VAL_MAP.put("key1", "value1");
@@ -328,4 +332,66 @@ public class JsonUtilPerfTest {
       JsonUtil.addToObject("k23", null, b);
       return b;
    }
+
+   // -------------------------------------------------------------------------
+   // truncate benchmarks — isolates dispatch and processing overhead
+   // -------------------------------------------------------------------------
+
+   @Benchmark
+   public Object testTruncateStringTriggered() {
+      return JsonUtil.truncate(VAL_STRING4, TRUNCATE_LIMIT_TRIGGER);
+   }
+
+   @Benchmark
+   public Object testTruncateStringNoOp() {
+      return JsonUtil.truncate(VAL_STRING4, TRUNCATE_LIMIT_NO_OP);
+   }
+
+   @Benchmark
+   public Object testTruncateBytesTriggered() {
+      return JsonUtil.truncate(VAL_BYTES, TRUNCATE_LIMIT_TRIGGER);
+   }
+
+   @Benchmark
+   public Object testTruncateBytesNoOp() {
+      return JsonUtil.truncate(VAL_BYTES, TRUNCATE_LIMIT_NO_OP);
+   }
+
+   @Benchmark
+   public Object testTruncateCharsTriggered() {
+      return JsonUtil.truncate(VAL_CHARS, TRUNCATE_LIMIT_TRIGGER);
+   }
+
+   @Benchmark
+   public Object testTruncateCharsNoOp() {
+      return JsonUtil.truncate(VAL_CHARS, TRUNCATE_LIMIT_NO_OP);
+   }
+
+   @Benchmark
+   public Object testTruncateNull() {
+      return JsonUtil.truncate(null, TRUNCATE_LIMIT_TRIGGER);
+   }
+
+   @Benchmark
+   public Object testTruncateFallback() {
+      // Exercises the execution path bypassing specialized primitive/string handling
+      return JsonUtil.truncate(VAL_LONG1, TRUNCATE_LIMIT_TRIGGER);
+   }
+
+   /**
+    * Executes a sequence of all truncation scenarios in a single path
+    * to simulate a hot-loop handling heterogeneous object pipelines.
+    */
+   @Benchmark
+   public void testTruncateAllScenarios() {
+      JsonUtil.truncate(VAL_STRING1, TRUNCATE_LIMIT_TRIGGER);
+      JsonUtil.truncate(VAL_STRING4, TRUNCATE_LIMIT_NO_OP);
+      JsonUtil.truncate(VAL_BYTES, TRUNCATE_LIMIT_TRIGGER);
+      JsonUtil.truncate(VAL_BYTES, TRUNCATE_LIMIT_NO_OP);
+      JsonUtil.truncate(VAL_CHARS, TRUNCATE_LIMIT_TRIGGER);
+      JsonUtil.truncate(VAL_CHARS, TRUNCATE_LIMIT_NO_OP);
+      JsonUtil.truncate(VAL_MAP, TRUNCATE_LIMIT_TRIGGER);
+      JsonUtil.truncate(null, TRUNCATE_LIMIT_TRIGGER);
+   }
+
 }
