@@ -362,7 +362,7 @@ public final class JsonUtil {
          }
       }
       return value;
-   }   
+   }
 
    public static JsonObject mergeAndUpdate(JsonObject source, JsonObject update) {
       // all immutable so we need to create new merged instance
