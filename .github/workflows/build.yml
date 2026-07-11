@@ -27,23 +27,70 @@ env:
 
 
 jobs:
+
+  install:
+    name: Install (${{ matrix.java }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ 17, 21, 25 ]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: artemis
+
+      - name: Cache Maven Local Repo
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.m2/repository/
+          key: ${{ runner.os }}-mvn-${{ hashFiles('artemis/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-mvn-
+
+      - name: Install JDK ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+
+      # Compile and install to local .m2 cache
+      - name: Compile and Install
+        run: |
+          cd artemis
+          mvn -s .github/maven-settings.xml -DskipTests clean install
+
+      # Save the precompiled artemis directory containing all target/ folders
+      - name: Upload Compiled Workspace
+        uses: actions/upload-artifact@v7
+        with:
+          name: compiled-workspace-jdk-${{ matrix.java }}
+          path: artemis/
+          retention-days: 1
+
   test:
     name: Test (${{ matrix.java }})
+    needs: install
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         java: [ 17, 21, 25 ]
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Download Compiled Workspace
+        uses: actions/download-artifact@v7
         with:
+          name: compiled-workspace-jdk-${{ matrix.java }}
           path: artemis
 
-      # Cache is prepared by the 'checks' jobs below
       - name: Restore Maven Local Repo Cache
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.m2/repository/
@@ -62,7 +109,7 @@ jobs:
       - name: Fast Tests
         run: |
           cd artemis
-          mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests install
+          mvn -s .github/maven-settings.xml -Dorg.apache.activemq.artemis.core.io.aio.AIOSequentialFileFactory.DISABLED=AnythingNotNull -Pfast-tests -Pcompatibility-tests test
 
       - name: Archive Test Logs
         if: failure()
@@ -74,15 +121,19 @@ jobs:
 
   checks:
     name: Checks (${{ matrix.java }})
+    needs: install
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         java: [ 17, 21, 25 ]
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Download Compiled Workspace
+        uses: actions/download-artifact@v7
         with:
+          name: compiled-workspace-jdk-${{ matrix.java }}
           path: artemis
 
       - name: Cache Maven Local Repo
