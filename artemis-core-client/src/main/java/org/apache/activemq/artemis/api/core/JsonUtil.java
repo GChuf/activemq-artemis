@@ -332,7 +332,7 @@ public final class JsonUtil {
    public static String truncateString(final String str, final int valueSizeLimit) {
       int stringLength = str.length();
       if (valueSizeLimit >= 0 && stringLength > valueSizeLimit) {
-         return new StringBuilder(valueSizeLimit + 32).append(str, 0, valueSizeLimit).append(", + ").append(stringLength - valueSizeLimit).append(" more").toString();
+         return str.substring(0, valueSizeLimit) + ", + " + (stringLength - valueSizeLimit) + " more";
       } else {
          return str;
       }
@@ -343,23 +343,27 @@ public final class JsonUtil {
          return "";
       }
       if (valueSizeLimit >= 0) {
-         final Class<?> valueClass = value.getClass();
-         if (valueClass == String.class) {
-            return truncateString((String)value, valueSizeLimit);
-         } else if (valueClass.isArray()) {
-            if (valueClass == byte[].class) {
-               if (((byte[]) value).length > valueSizeLimit) {
-                  return Arrays.copyOfRange((byte[]) value, 0, valueSizeLimit);
+         if (value instanceof String str) {
+            return truncateString(str, valueSizeLimit);
+         }
+         if (value.getClass().isArray()) {
+            if (value instanceof byte[] bytes) {
+               if (bytes.length > valueSizeLimit) {
+                  byte[] result = new byte[valueSizeLimit];
+                  System.arraycopy(bytes, 0, result, 0, valueSizeLimit);
+                  return result;
                }
-            } else if (valueClass == char[].class) {
-               if (((char[]) value).length > valueSizeLimit) {
-                  return Arrays.copyOfRange((char[]) value, 0, valueSizeLimit);
+            } else if (value instanceof char[] chars) {
+               if (chars.length > valueSizeLimit) {
+                  char[] result = new char[valueSizeLimit];
+                  System.arraycopy(chars, 0, result, 0, valueSizeLimit);
+                  return result;
                }
             }
          }
       }
       return value;
-   }
+   }   
 
    public static JsonObject mergeAndUpdate(JsonObject source, JsonObject update) {
       // all immutable so we need to create new merged instance
