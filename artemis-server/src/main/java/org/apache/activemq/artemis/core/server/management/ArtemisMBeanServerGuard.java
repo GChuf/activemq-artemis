@@ -49,6 +49,7 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
 
    private final Cache<ObjectName, Boolean> bypassRBACCache = Caffeine.newBuilder().maximumSize(10000).build();
    private static final Cache<String, ObjectName> objectNameCache = Caffeine.newBuilder().maximumSize(10000).build();
+   private static final Cache<Subject, Set<String>> userRolesCache = Caffeine.newBuilder().weakKeys().maximumSize(10000).build();
 
    public void init() {
       ArtemisMBeanServerBuilder.setGuard(this);
@@ -241,11 +242,13 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
          return Collections.emptySet();
       }
 
-      Set<String> roles = new HashSet<>();
-      for (Principal p : subject.getPrincipals()) {
-         roles.add(p.getName());
-      }
-      return roles;
+      return userRolesCache.get(subject, s -> {
+         Set<String> roles = new HashSet<>();
+         for (Principal p : s.getPrincipals()) {
+            roles.add(p.getName());
+         }
+         return Collections.unmodifiableSet(roles);
+      });
    }
 
 }
