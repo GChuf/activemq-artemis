@@ -19,8 +19,8 @@ package org.apache.activemq.artemis.utils;
 import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.VMOption;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 /**
  * Utility that detects various properties specific to the current runtime environment, such as JVM bitness and OS
@@ -46,22 +46,16 @@ public final class Env {
    public static int getOsPageSize() {
       //most common OS page size value
       int osPageSize = 4096;
-      sun.misc.Unsafe instance;
       try {
-         Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+         Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+         Field field = unsafeClass.getDeclaredField("theUnsafe");
          field.setAccessible(true);
-         instance = (sun.misc.Unsafe) field.get(null);
-      } catch (Throwable t) {
-         try {
-            Constructor<sun.misc.Unsafe> c = sun.misc.Unsafe.class.getDeclaredConstructor(new Class[0]);
-            c.setAccessible(true);
-            instance = c.newInstance(new Object[0]);
-         } catch (Throwable t1) {
-            instance = null;
-         }
-      }
-      if (instance != null) {
-         osPageSize = instance.pageSize();
+         Object unsafe = field.get(null);
+         
+         Method pageSizeMethod = unsafeClass.getMethod("pageSize");
+         return (Integer) pageSizeMethod.invoke(unsafe);
+      } catch (Throwable ignored) {
+         // Fallback path if reflection is blocked
       }
       return osPageSize;
    }
@@ -125,15 +119,15 @@ public final class Env {
    }
 
    public static boolean isLinuxOs() {
-      return IS_LINUX == true;
+      return IS_LINUX;
    }
 
    public static boolean isMacOs() {
-      return IS_MAC == true;
+      return IS_MAC;
    }
 
    public static boolean isWindowsOs() {
-      return IS_WINDOWS == true;
+      return IS_WINDOWS;
    }
 
 }
