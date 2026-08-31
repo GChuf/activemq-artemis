@@ -193,10 +193,6 @@ public class ArtemisMBeanServerGuard implements GuardInvocationHandler {
       throw new SecurityException("User not authorized to access operation: " + operationName);
    }
 
-   Set<String> getRequiredRoles(ObjectName objectName, String methodName) {
-      return jmxAccessControlList.getRolesForObject(objectName, methodName);
-   }
-
    boolean authorizeUserForMethod(ObjectName objectName, String operationName, Set<String> currentUserRoles) {
       return jmxAccessControlList.authorizeUserForMethod(objectName, operationName, currentUserRoles);
    }
