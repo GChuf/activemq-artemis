@@ -53,7 +53,7 @@ public final class Env {
          Object unsafe = field.get(null);
          
          Method pageSizeMethod = unsafeClass.getMethod("pageSize");
-         return (Integer) pageSizeMethod.invoke(unsafe);
+         osPageSize = (Integer) pageSizeMethod.invoke(unsafe);
       } catch (Throwable ignored) {
          // Fallback path if reflection is blocked
       }
