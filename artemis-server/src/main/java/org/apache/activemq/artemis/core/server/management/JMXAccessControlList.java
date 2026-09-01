@@ -111,6 +111,16 @@ public class JMXAccessControlList {
             int eqIndex = rawPattern.indexOf('=');
             String prefix = (eqIndex != -1) ? rawPattern.substring(0, eqIndex) : "";
 
+            // route to wildcard bucket if the pattern contains wildcards and has no equal sign
+            if (eqIndex == -1) {
+               if (rawPattern.contains("*")) {
+                  prefix = "*";
+               }
+            // route to wildcard bucket if the prefix contains wildcards
+            } else if (prefix.contains("*")) {
+               prefix = "*";
+            }
+
             // Initialize the Bucket (Map + List)
             Bucket bucket = grouped.computeIfAbsent(prefix, k ->
                   new Bucket(new HashMap<>(), new ArrayList<>())
@@ -144,17 +154,27 @@ public class JMXAccessControlList {
             String propKey = entry.getKey();
             Bucket bucket = bucketedMap.get(propKey);
 
+            String key = normalizeKey(propKey + "=" + entry.getValue());
             if (bucket != null) {
-               String normalizedValue = normalizeKey(propKey + "=" + entry.getValue());
 
                // exact match check first
-               if (bucket.exactMatches().containsKey(normalizedValue)) {
-                  return bucket.exactMatches().get(normalizedValue).access().authorizeUserForMethod(methodName, userRoles);
+               if (bucket.exactMatches().containsKey(key)) {
+                  return bucket.exactMatches().get(key).access().authorizeUserForMethod(methodName, userRoles);
                }
 
                // regex matching
                for (AccessEntry regexEntry : bucket.regexPatterns()) {
-                  if (regexEntry.access().getKeyPattern().matcher(normalizedValue).matches()) {
+                  if (regexEntry.access().getKeyPattern().matcher(key).matches()) {
+                     return regexEntry.access().authorizeUserForMethod(methodName, userRoles);
+                  }
+               }
+            }
+
+            // fallback for wildcards in key
+            Bucket wildcardBucket = bucketedMap.get("*");
+            if (wildcardBucket != null) {
+               for (AccessEntry regexEntry : wildcardBucket.regexPatterns()) {
+                  if (regexEntry.access().getKeyPattern().matcher(key).matches()) {
                      return regexEntry.access().authorizeUserForMethod(methodName, userRoles);
                   }
                }
