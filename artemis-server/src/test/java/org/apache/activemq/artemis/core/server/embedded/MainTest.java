@@ -40,8 +40,7 @@ public class MainTest {
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    /*
-    * Test what happens when no workdir arg is given, expect
-    * to throw IllegalArgumentException.
+    * Test what happens when no workdir arg is given, expect to throw IllegalArgumentException.
     */
    @Test
    @Timeout(5)
@@ -96,147 +95,143 @@ public class MainTest {
       }
    }
 
+   /*
+    * Test valid workDir and propertiesConfigPath arguments
+    */   
+   @Test
+   @Timeout(15)
+   public void testConfigFile(@TempDir Path tempDir) throws Exception {
+      Path workDirPath = tempDir.resolve("workDir");
+      Path configDirPath = tempDir.resolve("configDir");
 
-@Test
-@Timeout(15)
-public void testConfigFile(@TempDir Path tempDir) throws Exception {
-   Path workDirPath = tempDir.resolve("workDir");
-   Path configDirPath = tempDir.resolve("configDir");
+      Files.createDirectories(workDirPath);
+      Files.createDirectories(configDirPath);
 
-   Files.createDirectories(workDirPath);
-   Files.createDirectories(configDirPath);
-
-   Path sourceXml = Path.of("src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
-   if (!Files.exists(sourceXml)) {
-      sourceXml = Path.of("artemis-server/src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
-   }
-   assertTrue(Files.exists(sourceXml), "broker.xml should exist in source tree");
-
-   // Copy into temp directory
-   Path targetXml = configDirPath.resolve("broker.xml");
-   Files.copy(sourceXml, targetXml, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-   String customWorkDir = workDirPath.toAbsolutePath().toString();
-   
-   // FIX: Must use .toUri().toString() -> yields "file:///C:/Users/..."
-   String customConfigPath = targetXml.toUri().toString();
-
-   Thread serverThread = new Thread(() -> {
-      try {
-         Main.main(new String[] {customWorkDir, customConfigPath});
-      } catch (Exception e) {
-         logger.error("Error executing Main.main", e);
+      Path sourceXml = Path.of("src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
+      if (!Files.exists(sourceXml)) {
+         sourceXml = Path.of("artemis-server/src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
       }
-   }, "artemis-main-args-test");
+      assertTrue(Files.exists(sourceXml), "broker.xml should exist in source tree");
 
-   serverThread.start();
+      // Copy into temp directory
+      Path targetXml = configDirPath.resolve("broker.xml");
+      Files.copy(sourceXml, targetXml, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-   try {
-      EmbeddedActiveMQ server = null;
-      for (int i = 0; i < 20; i++) {
-         server = Main.getEmbeddedServer();
-         if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
-            break;
-         }
-         Thread.sleep(500);
-      }
-      assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
-      assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
-      assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+      String customWorkDir = workDirPath.toAbsolutePath().toString();
+      
+      // FIX: Must use .toUri().toString() -> yields "file:///C:/Users/..."
+      String customConfigPath = targetXml.toUri().toString();
 
-      var config = server.getActiveMQServer().getConfiguration();
-
-      // Verify directories from XML
-
-      //assertEquals("data/journal-embedded", config.getJournalDirectory());
-      //assertEquals("data/bindings-embedded", config.getBindingsDirectory());
-      //assertEquals("data/paging-embedded", config.getPagingDirectory());
-      //assertEquals("data/large-messages-embedded", config.getLargeMessagesDirectory());
-
-      //relative paths when config comes from XML
-      String expectedDataDir = customWorkDir;
-      assertEquals("data/journal-embedded", config.getJournalDirectory());
-      assertEquals("data/bindings-embedded", config.getBindingsDirectory());
-      assertEquals("data/paging-embedded", config.getPagingDirectory());
-      assertEquals("data/large-messages-embedded", config.getLargeMessagesDirectory());
-
-      // Verify settings applied from broker.xml
-      assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
-      assertTrue(config.getName().equals("embedded-broker"), "Name setting from broker.xml was not applied");
-
-   } finally {
-      EmbeddedActiveMQ server = Main.getEmbeddedServer();
-      if (server != null) {
+      Thread serverThread = new Thread(() -> {
          try {
-            server.stop();
-         } catch (Throwable t) {
-            logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+            Main.main(new String[] {customWorkDir, customConfigPath});
+         } catch (Exception e) {
+            logger.error("Error executing Main.main", e);
          }
-      }
-      serverThread.join(3000);
-   }
-}
+      }, "artemis-main-args-test");
 
+      serverThread.start();
 
-@Test
-@Timeout(15)
-public void testWorkdir(@TempDir Path tempDir) throws Exception {
-   Path workDirPath = tempDir.resolve("workDir");
-
-   Files.createDirectories(workDirPath);
-
-   String customWorkDir = workDirPath.toAbsolutePath().toString();
-
-   Thread serverThread = new Thread(() -> {
       try {
-         Main.main(new String[] {customWorkDir});
-      } catch (Exception e) {
-         logger.error("Error executing Main.main", e);
-      }
-   }, "artemis-main-workdir-test");
-
-   serverThread.start();
-
-   try {
-      EmbeddedActiveMQ server = null;
-      for (int i = 0; i < 20; i++) {
-         server = Main.getEmbeddedServer();
-         if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
-            break;
+         EmbeddedActiveMQ server = null;
+         for (int i = 0; i < 20; i++) {
+            server = Main.getEmbeddedServer();
+            if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+               break;
+            }
+            Thread.sleep(500);
          }
-         Thread.sleep(500);
-      }
-      assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
-      assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
-      assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+         assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
+         assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
+         assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
 
-      var config = server.getActiveMQServer().getConfiguration();
+         var config = server.getActiveMQServer().getConfiguration();
 
-      // Verify directories from default configuration
+         // verify directories from XML
+         // use relative paths
+         assertEquals("data/journal-embedded", config.getJournalDirectory());
+         assertEquals("data/bindings-embedded", config.getBindingsDirectory());
+         assertEquals("data/paging-embedded", config.getPagingDirectory());
+         assertEquals("data/large-messages-embedded", config.getLargeMessagesDirectory());
 
-      //absolute paths when default config is used
-      String expectedDataDir = customWorkDir;
-      assertEquals(expectedDataDir + "/data/journal", config.getJournalDirectory());
-      assertEquals(expectedDataDir + "/data/bindings", config.getBindingsDirectory());
-      assertEquals(expectedDataDir + "/data/paging", config.getPagingDirectory());
-      assertEquals(expectedDataDir + "/data/large-messages", config.getLargeMessagesDirectory());
+         // Verify settings applied from broker.xml
+         assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
+         assertTrue(config.getName().equals("embedded-broker"), "Name setting from broker.xml was not applied");
 
-      // Verify settings applied from broker.xml
-      assertTrue(config.isPersistenceEnabled(), "Persistence setting don't have the default value");
-      assertTrue(config.getName().equals("localhost"), "Broker name is not the default value");
-
-   } finally {
-      EmbeddedActiveMQ server = Main.getEmbeddedServer();
-      if (server != null) {
-         try {
-            server.stop();
-         } catch (Throwable t) {
-            logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+      } finally {
+         EmbeddedActiveMQ server = Main.getEmbeddedServer();
+         if (server != null) {
+            try {
+               server.stop();
+            } catch (Throwable t) {
+               logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+            }
          }
+         serverThread.join(3000);
       }
-      serverThread.join(3000);
    }
-}
+
+   /*
+    * Test valid workDir argument
+    */   
+   @Test
+   @Timeout(15)
+   public void testWorkdir(@TempDir Path tempDir) throws Exception {
+      Path workDirPath = tempDir.resolve("workDir");
+
+      Files.createDirectories(workDirPath);
+
+      String customWorkDir = workDirPath.toAbsolutePath().toString();
+
+      Thread serverThread = new Thread(() -> {
+         try {
+            Main.main(new String[] {customWorkDir});
+         } catch (Exception e) {
+            logger.error("Error executing Main.main", e);
+         }
+      }, "artemis-main-workdir-test");
+
+      serverThread.start();
+
+      try {
+         EmbeddedActiveMQ server = null;
+         for (int i = 0; i < 20; i++) {
+            server = Main.getEmbeddedServer();
+            if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+               break;
+            }
+            Thread.sleep(500);
+         }
+         assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
+         assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
+         assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+
+         var config = server.getActiveMQServer().getConfiguration();
+
+         // verify directories from default configuration
+         // use absolute paths
+         String expectedDataDir = customWorkDir;
+         assertEquals(expectedDataDir + "/data/journal", config.getJournalDirectory());
+         assertEquals(expectedDataDir + "/data/bindings", config.getBindingsDirectory());
+         assertEquals(expectedDataDir + "/data/paging", config.getPagingDirectory());
+         assertEquals(expectedDataDir + "/data/large-messages", config.getLargeMessagesDirectory());
+
+         // Verify settings applied from broker.xml
+         assertTrue(config.isPersistenceEnabled(), "Persistence setting don't have the default value");
+         assertTrue(config.getName().equals("localhost"), "Broker name is not the default value");
+
+      } finally {
+         EmbeddedActiveMQ server = Main.getEmbeddedServer();
+         if (server != null) {
+            try {
+               server.stop();
+            } catch (Throwable t) {
+               logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+            }
+         }
+         serverThread.join(3000);
+      }
+   }
 
 
 
