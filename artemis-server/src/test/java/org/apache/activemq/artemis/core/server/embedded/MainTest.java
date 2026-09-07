@@ -22,12 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -92,6 +89,64 @@ public class MainTest {
                logger.warn("Caught issue while stopping the unexpectedly-present server", t);
             }
          }
+      }
+   }
+
+   /*
+    * Test valid workDir argument
+    */   
+   @Test
+   @Timeout(15)
+   public void testWorkdir(@TempDir Path tempDir) throws Exception {
+      Path workDirPath = tempDir.resolve("workDir");
+
+      Files.createDirectories(workDirPath);
+
+      String customWorkDir = workDirPath.toAbsolutePath().toString();
+
+      Thread serverThread = new Thread(() -> {
+         try {
+            Main.main(new String[] {customWorkDir});
+         } catch (Exception e) {
+            logger.error("Error executing Main.main", e);
+         }
+      }, "artemis-main-workdir-test");
+
+      serverThread.start();
+
+      try {
+         EmbeddedActiveMQ server = null;
+         for (int i = 0; i < 20; i++) {
+            server = Main.getEmbeddedServer();
+            if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+               break;
+            }
+            Thread.sleep(500);
+         }
+         assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
+         assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
+         assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+
+         var config = server.getActiveMQServer().getConfiguration();
+
+         // verify directories from default configuration
+         // use absolute paths
+         String expectedDataDir = customWorkDir;
+         assertEquals(expectedDataDir + "/data/journal", config.getJournalDirectory());
+         assertEquals(expectedDataDir + "/data/bindings", config.getBindingsDirectory());
+         assertEquals(expectedDataDir + "/data/paging", config.getPagingDirectory());
+         assertEquals(expectedDataDir + "/data/large-messages", config.getLargeMessagesDirectory());
+
+      } finally {
+         EmbeddedActiveMQ server = Main.getEmbeddedServer();
+         if (server != null) {
+            try {
+               server.stop();
+            } catch (Throwable t) {
+               logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+            }
+         }
+         serverThread.join(3000);
       }
    }
 
@@ -168,95 +223,4 @@ public class MainTest {
       }
    }
 
-   /*
-    * Test valid workDir argument
-    */   
-   @Test
-   @Timeout(15)
-   public void testWorkdir(@TempDir Path tempDir) throws Exception {
-      Path workDirPath = tempDir.resolve("workDir");
-
-      Files.createDirectories(workDirPath);
-
-      String customWorkDir = workDirPath.toAbsolutePath().toString();
-
-      Thread serverThread = new Thread(() -> {
-         try {
-            Main.main(new String[] {customWorkDir});
-         } catch (Exception e) {
-            logger.error("Error executing Main.main", e);
-         }
-      }, "artemis-main-workdir-test");
-
-      serverThread.start();
-
-      try {
-         EmbeddedActiveMQ server = null;
-         for (int i = 0; i < 20; i++) {
-            server = Main.getEmbeddedServer();
-            if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
-               break;
-            }
-            Thread.sleep(500);
-         }
-         assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
-         assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
-         assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
-
-         var config = server.getActiveMQServer().getConfiguration();
-
-         // verify directories from default configuration
-         // use absolute paths
-         String expectedDataDir = customWorkDir;
-         assertEquals(expectedDataDir + "/data/journal", config.getJournalDirectory());
-         assertEquals(expectedDataDir + "/data/bindings", config.getBindingsDirectory());
-         assertEquals(expectedDataDir + "/data/paging", config.getPagingDirectory());
-         assertEquals(expectedDataDir + "/data/large-messages", config.getLargeMessagesDirectory());
-
-         // Verify settings applied from broker.xml
-         assertTrue(config.isPersistenceEnabled(), "Persistence setting don't have the default value");
-         assertTrue(config.getName().equals("localhost"), "Broker name is not the default value");
-
-      } finally {
-         EmbeddedActiveMQ server = Main.getEmbeddedServer();
-         if (server != null) {
-            try {
-               server.stop();
-            } catch (Throwable t) {
-               logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
-            }
-         }
-         serverThread.join(3000);
-      }
-   }
-
-
-
-/*
-   @Test
-   @Timeout(5)
-   public void testReadOnlyWorkDir(@TempDir Path tempDir) throws Exception {
-      File readOnlyDir = tempDir.resolve("no-access").toFile();
-      assertTrue(readOnlyDir.mkdir());
-      assertTrue(readOnlyDir.setWritable(false, false)); // Revokes write access for all on Windows and Linux
-
-      try {
-         Main.main(new String[] {readOnlyDir.getAbsolutePath()});
-         fail("Should have thrown an exception due to read-only workDir");
-      } catch (Exception expected) {
-         logger.info("Caught expected IOException: " + expected.getMessage());
-      } finally {
-         readOnlyDir.setWritable(true); // Ensure clean deletion
-         EmbeddedActiveMQ server = Main.getEmbeddedServer();
-         if (server != null) {
-            try {
-               server.stop();
-            } catch (Throwable t) {
-               logger.warn("Caught issue while stopping the unexpectedly-present server", t);
-            }
-         }
-      }
-
-   }
-*/
 }

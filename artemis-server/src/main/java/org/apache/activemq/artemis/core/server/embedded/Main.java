@@ -37,7 +37,7 @@ public class Main {
 
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-   private static String workDir = "";
+   private static String workDir = "/app";
    private static String propertiesConfigPath = "";
    private static volatile EmbeddedActiveMQ embeddedServer;
 
@@ -102,7 +102,7 @@ public class Main {
          }
       }
 
-      // Load configuration, overwrites configureDataDirectory
+      // Load configuration, can overwrite configureDataDirectory
       if (xmlToLoad != null && xmlToLoad.exists()) {
          logger.debug("Loading XML configuration from {}", xmlToLoad);
          configuration = loadFromXmlFile(xmlToLoad, configuration);
