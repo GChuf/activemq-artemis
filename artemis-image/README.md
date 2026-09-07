@@ -39,6 +39,10 @@ The `:<version>` part of the image name is the maven ${project.version} from the
 
 > **Note that you can later stop the detached container with: `$> podman stop artemis`*
 
+You can execute bash inside the container like this:
+
+`podman exec -ti artemis /bin/bash`
+
 Execute the artemis producer/consumer command line tools to interact with the broker.
 
  `$> ./bin/artemis producer --url tcp://localhost:61616`
