@@ -51,31 +51,40 @@ public class Main {
          logger.debug("User supplied work dir {}", workDir);
       }
 
-      if (args.length == 2) {
-         if (args[1] == null || args[1].trim().isEmpty()) {
-            throw new IllegalArgumentException("Properties/Config path cannot be empty");
-         }
+if (args.length >= 2) {
+   if (args[1] == null || args[1].trim().isEmpty()) {
+      throw new IllegalArgumentException("Properties/Config path cannot be empty");
+   }
 
-         String rawPath = args[1].trim();
-         Path pathToCheck;
+   String rawPath = args[1].trim();
+   // Standardize URI vs raw path handling
+   Path configPath = rawPath.startsWith("file:") 
+         ? Paths.get(URI.create(rawPath.replace('\\', '/')))
+         : Paths.get(rawPath);
 
-         // 1. Resolve pathToCheck to verify existence on disk
-         if (rawPath.startsWith("file:")) {
-            pathToCheck = Paths.get(URI.create(rawPath));
-            propertiesConfigPath = rawPath;
-         } else {
-            pathToCheck = Paths.get(rawPath);
-            // Automatically convert plain file system paths to file: URIs for EmbeddedActiveMQ
-            propertiesConfigPath = pathToCheck.toUri().toString();
-         }
-         // 2. Validate existence
-         if (!Files.exists(pathToCheck)) {
-            throw new IllegalArgumentException("Config path does not exist: " + args[1]);
-         }
-         logger.debug("User supplied properties config path {}", propertiesConfigPath);
-      } else {
-         propertiesConfigPath = "/config/," + workDir + "/etc/";
-      }
+   if (!Files.exists(configPath)) {
+      throw new IllegalArgumentException("Config path does not exist: " + args[1]);
+   }
+
+   // Set the normalized absolute path string without 'file:' prefix
+   propertiesConfigPath = configPath.toAbsolutePath().toString();
+   logger.debug("User supplied properties config path {}", propertiesConfigPath);
+} else {
+   propertiesConfigPath = "/config/," + workDir + "/etc/";
+}
+
+// When configuring EmbeddedActiveMQ:
+embeddedServer = new EmbeddedActiveMQ();
+
+if (propertiesConfigPath != null) {
+   Path path = Paths.get(propertiesConfigPath);
+   if (Files.isRegularFile(path)) {
+      // Use the File's URI toURL() string representation for cross-platform file resolution
+      embeddedServer.setConfigResourcePath(path.toUri().toURL().toExternalForm());
+   } else {
+      embeddedServer.setPropertiesResourcePath(propertiesConfigPath);
+   }
+}
 
       if (args.length >= 3) {
          throw new IllegalArgumentException("Maximum number of expected arguments is 2");
@@ -92,9 +101,7 @@ public class Main {
          configuration = loadFromXmlFile(bringYourOwnXml, configuration);
       }
 
-      embeddedServer = new EmbeddedActiveMQ();
-      // look for properties files to augment configuration
-      embeddedServer.setPropertiesResourcePath(propertiesConfigPath);
+
       embeddedServer.setConfiguration(configuration);
       embeddedServer.createActiveMQServer();
 
