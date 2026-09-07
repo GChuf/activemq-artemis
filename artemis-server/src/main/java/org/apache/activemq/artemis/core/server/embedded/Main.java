@@ -33,7 +33,8 @@ public class Main {
 
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-   private static String workDir = "/app";
+   private static String workDir = "";
+   private static String propertiesConfigPath = "";
    private static volatile EmbeddedActiveMQ embeddedServer;
 
    public static void main(String[] args) throws Exception {
@@ -46,10 +47,15 @@ public class Main {
          logger.debug("User supplied work dir {}", workDir);
       }
 
-      String propertiesConfigPath = "/config/," + workDir + "/etc/";
       if (args.length == 2) {
          propertiesConfigPath = args[1];
          logger.debug("User supplied properties config path {}", propertiesConfigPath);
+      } else {
+         propertiesConfigPath = "/config/," + workDir + "/etc/";
+      }
+
+      if (args.length >= 3) {
+         throw new IllegalArgumentException("Maximum number of expected arguments is 2");
       }
 
       FileConfiguration configuration = new FileConfiguration();
