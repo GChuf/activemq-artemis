@@ -31,7 +31,7 @@
    <properties>
 
       <!-- base jre image, reproducible build and single pull with @sha reference -->
-      <fromImage>eclipse-temurin:20-jre@sha256:5340605ada8bee017109147c838a96a24ecec037bedac5f157b26817ab633e02</fromImage>
+      <fromImage>eclipse-temurin:25-jre@sha256:cae3d8446a46bacddedc21492609dd2d29cfe42648e377e276b15cea9118df63</fromImage>
 
       <!-- none of the surefire project defaults are relevant to the tests here -->
       <activemq-surefire-argline />
