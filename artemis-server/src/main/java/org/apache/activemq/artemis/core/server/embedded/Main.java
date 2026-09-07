@@ -40,7 +40,7 @@ public class Main {
 
       if (args.length >= 1) {
          if (args[0] == null || args[0].trim().isEmpty()) {
-            throw new java.io.IOException("Work directory cannot be empty");
+            throw new IllegalArgumentException("Work directory cannot be empty");
          }
          workDir = args[0];
          logger.debug("User supplied work dir {}", workDir);
