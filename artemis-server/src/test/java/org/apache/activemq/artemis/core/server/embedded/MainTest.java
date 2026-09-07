@@ -107,11 +107,8 @@ public class MainTest {
       Files.createDirectories(workDirPath);
       Files.createDirectories(configDirPath);
 
-      Path sourceXml = Path.of("src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
-      if (!Files.exists(sourceXml)) {
-         sourceXml = Path.of("artemis-server/src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
-      }
-      assertTrue(Files.exists(sourceXml), "broker.xml should exist in source tree");
+      Path sourceXml = Path.of("src/test/resources/broker-embedded-minimal.xml");
+      assertTrue(Files.exists(sourceXml), "broker-embedded-minimal.xml should exist in source tree");
 
       // Copy into temp directory
       Path targetXml = configDirPath.resolve("broker.xml");
