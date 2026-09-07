@@ -121,10 +121,26 @@ public void testArguments(@TempDir Path tempDir) throws Exception {
    // FIX: Must use .toUri().toString() -> yields "file:///C:/Users/..."
    String customConfigPath = targetXml.toUri().toString();
 
-   try {
-      Main.main(new String[] {customWorkDir, customConfigPath});
 
-      EmbeddedActiveMQ server = Main.getEmbeddedServer();
+Thread serverThread = new Thread(() -> {
+      try {
+         Main.main(new String[] {customWorkDir, customConfigPath});
+      } catch (Exception e) {
+         logger.error("Error executing Main.main", e);
+      }
+   }, "artemis-main-args-test");
+
+   serverThread.start();
+
+   try {
+EmbeddedActiveMQ server = null;
+      for (int i = 0; i < 20; i++) {
+         server = Main.getEmbeddedServer();
+         if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+            break;
+         }
+         Thread.sleep(500);
+      }
       assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
       assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
       assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
@@ -141,7 +157,7 @@ public void testArguments(@TempDir Path tempDir) throws Exception {
       // Verify settings applied from broker.xml
       assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
 
-   } finally {
+} finally {
       EmbeddedActiveMQ server = Main.getEmbeddedServer();
       if (server != null) {
          try {
@@ -150,6 +166,7 @@ public void testArguments(@TempDir Path tempDir) throws Exception {
             logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
          }
       }
+      serverThread.join(3000);
    }
 }
 

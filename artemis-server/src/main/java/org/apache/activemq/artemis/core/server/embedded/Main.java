@@ -1,12 +1,12 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
+ * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,6 +43,8 @@ public class Main {
 
    public static void main(String[] args) throws Exception {
 
+      Path customXmlPath = null;
+
       if (args.length >= 1) {
          if (args[0] == null || args[0].trim().isEmpty()) {
             throw new IllegalArgumentException("Work directory cannot be empty");
@@ -51,56 +53,62 @@ public class Main {
          logger.debug("User supplied work dir {}", workDir);
       }
 
-if (args.length >= 2) {
-   if (args[1] == null || args[1].trim().isEmpty()) {
-      throw new IllegalArgumentException("Properties/Config path cannot be empty");
-   }
+      if (args.length >= 2) {
+         if (args[1] == null || args[1].trim().isEmpty()) {
+            throw new IllegalArgumentException("Properties/Config path cannot be empty");
+         }
 
-   String rawPath = args[1].trim();
-   // Standardize URI vs raw path handling
-   Path configPath = rawPath.startsWith("file:") 
-         ? Paths.get(URI.create(rawPath.replace('\\', '/')))
-         : Paths.get(rawPath);
+         String rawPath = args[1].trim();
 
-   if (!Files.exists(configPath)) {
-      throw new IllegalArgumentException("Config path does not exist: " + args[1]);
-   }
+         // Convert to Path for existence check
+         if (rawPath.startsWith("file:")) {
+            customXmlPath = Paths.get(URI.create(rawPath));
+            propertiesConfigPath = rawPath;
+         } else {
+            customXmlPath = Paths.get(rawPath);
+            propertiesConfigPath = customXmlPath.toUri().toString();
+         }
 
-   // Set the normalized absolute path string without 'file:' prefix
-   propertiesConfigPath = configPath.toAbsolutePath().toString();
-   logger.debug("User supplied properties config path {}", propertiesConfigPath);
-} else {
-   propertiesConfigPath = "/config/," + workDir + "/etc/";
-}
+         // Validate file existence on disk
+         if (!Files.exists(customXmlPath)) {
+            throw new IllegalArgumentException("Config path does not exist: " + args[1]);
+         }
 
-// When configuring EmbeddedActiveMQ:
-embeddedServer = new EmbeddedActiveMQ();
-
-if (propertiesConfigPath != null) {
-   Path path = Paths.get(propertiesConfigPath);
-   if (Files.isRegularFile(path)) {
-      // Use the File's URI toURL() string representation for cross-platform file resolution
-      embeddedServer.setConfigResourcePath(path.toUri().toURL().toExternalForm());
-   } else {
-      embeddedServer.setPropertiesResourcePath(propertiesConfigPath);
-   }
-}
+         logger.debug("User supplied properties config path {}", propertiesConfigPath);
+      } else {
+         propertiesConfigPath = "/config/," + workDir + "/etc/";
+      }
 
       if (args.length >= 3) {
          throw new IllegalArgumentException("Maximum number of expected arguments is 2");
       }
+
+      embeddedServer = new EmbeddedActiveMQ();
 
       FileConfiguration configuration = new FileConfiguration();
 
       String dataDir = workDir + "/data";
       configureDataDirectory(configuration, dataDir);
 
-      File bringYourOwnXml = new File(workDir + "/etc/broker.xml");
-      if (bringYourOwnXml.exists()) {
-         logger.debug("byo config found {}", bringYourOwnXml);
-         configuration = loadFromXmlFile(bringYourOwnXml, configuration);
+      // Determine XML file to load
+      File xmlToLoad = null;
+
+      if (customXmlPath != null && propertiesConfigPath.toLowerCase().endsWith(".xml")) {
+         xmlToLoad = customXmlPath.toFile();
+      } else {
+         File bringYourOwnXml = new File(workDir + "/etc/broker.xml");
+         if (bringYourOwnXml.exists()) {
+            xmlToLoad = bringYourOwnXml;
+         }
       }
 
+      // Load configuration
+      if (xmlToLoad != null && xmlToLoad.exists()) {
+         logger.debug("Loading XML configuration from {}", xmlToLoad);
+         configuration = loadFromXmlFile(xmlToLoad, configuration);
+      } else if (propertiesConfigPath != null && !propertiesConfigPath.toLowerCase().endsWith(".xml")) {
+         embeddedServer.setPropertiesResourcePath(propertiesConfigPath);
+      }
 
       embeddedServer.setConfiguration(configuration);
       embeddedServer.createActiveMQServer();
@@ -157,7 +165,6 @@ if (propertiesConfigPath != null) {
                logger.trace("stop via shutdown hook");
                server.stop();
             } catch (Exception ignored) {
-               // we want to exit fast and silently
                logger.trace("Error on stop {}", ignored);
             }
          }
@@ -173,9 +180,7 @@ if (propertiesConfigPath != null) {
    }
 
    public static void configureDataDirectory(ConfigurationImpl configuration, String dataDir) {
-      // any provided value via xml config or properties will override
       configuration.setJournalDirectory(dataDir);
-      // setting these gives a better log message, not necessary otherwise
       configuration.setBindingsDirectory(dataDir + "/bindings");
       configuration.setLargeMessagesDirectory(dataDir + "/largemessages");
       configuration.setPagingDirectory(dataDir + "/paging");
