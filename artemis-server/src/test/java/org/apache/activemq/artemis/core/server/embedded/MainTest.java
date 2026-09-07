@@ -148,11 +148,11 @@ EmbeddedActiveMQ server = null;
       var config = server.getActiveMQServer().getConfiguration();
 
       // Verify directories from XML
-      String expectedDataDir = customWorkDir + "/data";
-      assertEquals(expectedDataDir + "/journal", config.getJournalDirectory());
-      assertEquals(expectedDataDir + "/bindings", config.getBindingsDirectory());
-      assertEquals(expectedDataDir + "/paging", config.getPagingDirectory());
-      assertEquals(expectedDataDir + "/large-messages", config.getLargeMessagesDirectory());
+
+      assertEquals("data/journal2", config.getJournalDirectory());
+      assertEquals("data/bindings2", config.getBindingsDirectory());
+      assertEquals("data/paging2", config.getPagingDirectory());
+      assertEquals("data/large-messages2", config.getLargeMessagesDirectory());
 
       // Verify settings applied from broker.xml
       assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
