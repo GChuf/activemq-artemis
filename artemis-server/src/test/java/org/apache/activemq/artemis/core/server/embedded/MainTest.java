@@ -99,7 +99,7 @@ public class MainTest {
 
 @Test
 @Timeout(15)
-public void testArguments(@TempDir Path tempDir) throws Exception {
+public void testConfigFile(@TempDir Path tempDir) throws Exception {
    Path workDirPath = tempDir.resolve("workDir");
    Path configDirPath = tempDir.resolve("configDir");
 
@@ -147,12 +147,12 @@ EmbeddedActiveMQ server = null;
 
       var config = server.getActiveMQServer().getConfiguration();
 
-      // Verify custom workDir
+      // Verify directories from XML
       String expectedDataDir = customWorkDir + "/data";
-      //assertEquals(expectedDataDir, config.getJournalDirectory());
-      //assertEquals(expectedDataDir + "/bindings", config.getBindingsDirectory());
-      //assertEquals(expectedDataDir + "/paging", config.getPagingDirectory());
-      //assertEquals(expectedDataDir + "/large-messages", config.getLargeMessagesDirectory());
+      assertEquals(expectedDataDir + "/journal", config.getJournalDirectory());
+      assertEquals(expectedDataDir + "/bindings", config.getBindingsDirectory());
+      assertEquals(expectedDataDir + "/paging", config.getPagingDirectory());
+      assertEquals(expectedDataDir + "/large-messages", config.getLargeMessagesDirectory());
 
       // Verify settings applied from broker.xml
       assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");

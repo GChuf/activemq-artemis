@@ -102,7 +102,7 @@ public class Main {
          }
       }
 
-      // Load configuration
+      // Load configuration, overwrites configureDataDirectory
       if (xmlToLoad != null && xmlToLoad.exists()) {
          logger.debug("Loading XML configuration from {}", xmlToLoad);
          configuration = loadFromXmlFile(xmlToLoad, configuration);
@@ -180,9 +180,9 @@ public class Main {
    }
 
    public static void configureDataDirectory(ConfigurationImpl configuration, String dataDir) {
-      configuration.setJournalDirectory(dataDir);
+      configuration.setJournalDirectory(dataDir + "/journal");
       configuration.setBindingsDirectory(dataDir + "/bindings");
-      configuration.setLargeMessagesDirectory(dataDir + "/largemessages");
+      configuration.setLargeMessagesDirectory(dataDir + "/large-messages");
       configuration.setPagingDirectory(dataDir + "/paging");
    }
 
