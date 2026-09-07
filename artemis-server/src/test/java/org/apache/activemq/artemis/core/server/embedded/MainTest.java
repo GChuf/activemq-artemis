@@ -121,8 +121,7 @@ public void testConfigFile(@TempDir Path tempDir) throws Exception {
    // FIX: Must use .toUri().toString() -> yields "file:///C:/Users/..."
    String customConfigPath = targetXml.toUri().toString();
 
-
-Thread serverThread = new Thread(() -> {
+   Thread serverThread = new Thread(() -> {
       try {
          Main.main(new String[] {customWorkDir, customConfigPath});
       } catch (Exception e) {
@@ -133,7 +132,7 @@ Thread serverThread = new Thread(() -> {
    serverThread.start();
 
    try {
-EmbeddedActiveMQ server = null;
+      EmbeddedActiveMQ server = null;
       for (int i = 0; i < 20; i++) {
          server = Main.getEmbeddedServer();
          if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
@@ -149,16 +148,23 @@ EmbeddedActiveMQ server = null;
 
       // Verify directories from XML
 
-      assertEquals("data/journal2", config.getJournalDirectory());
-      assertEquals("data/bindings2", config.getBindingsDirectory());
-      assertEquals("data/paging2", config.getPagingDirectory());
-      assertEquals("data/large-messages2", config.getLargeMessagesDirectory());
+      //assertEquals("data/journal-embedded", config.getJournalDirectory());
+      //assertEquals("data/bindings-embedded", config.getBindingsDirectory());
+      //assertEquals("data/paging-embedded", config.getPagingDirectory());
+      //assertEquals("data/large-messages-embedded", config.getLargeMessagesDirectory());
+
+      //relative paths when config comes from XML
+      String expectedDataDir = customWorkDir;
+      assertEquals("data/journal-embedded", config.getJournalDirectory());
+      assertEquals("data/bindings-embedded", config.getBindingsDirectory());
+      assertEquals("data/paging-embedded", config.getPagingDirectory());
+      assertEquals("data/large-messages-embedded", config.getLargeMessagesDirectory());
 
       // Verify settings applied from broker.xml
       assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
       assertTrue(config.getName().equals("embedded-broker"), "Name setting from broker.xml was not applied");
 
-} finally {
+   } finally {
       EmbeddedActiveMQ server = Main.getEmbeddedServer();
       if (server != null) {
          try {
@@ -170,6 +176,68 @@ EmbeddedActiveMQ server = null;
       serverThread.join(3000);
    }
 }
+
+
+@Test
+@Timeout(15)
+public void testWorkdir(@TempDir Path tempDir) throws Exception {
+   Path workDirPath = tempDir.resolve("workDir");
+
+   Files.createDirectories(workDirPath);
+
+   String customWorkDir = workDirPath.toAbsolutePath().toString();
+
+   Thread serverThread = new Thread(() -> {
+      try {
+         Main.main(new String[] {customWorkDir});
+      } catch (Exception e) {
+         logger.error("Error executing Main.main", e);
+      }
+   }, "artemis-main-workdir-test");
+
+   serverThread.start();
+
+   try {
+      EmbeddedActiveMQ server = null;
+      for (int i = 0; i < 20; i++) {
+         server = Main.getEmbeddedServer();
+         if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+            break;
+         }
+         Thread.sleep(500);
+      }
+      assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
+      assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
+      assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+
+      var config = server.getActiveMQServer().getConfiguration();
+
+      // Verify directories from default configuration
+
+      //absolute paths when default config is used
+      String expectedDataDir = customWorkDir;
+      assertEquals(expectedDataDir + "/data/journal", config.getJournalDirectory());
+      assertEquals(expectedDataDir + "/data/bindings", config.getBindingsDirectory());
+      assertEquals(expectedDataDir + "/data/paging", config.getPagingDirectory());
+      assertEquals(expectedDataDir + "/data/large-messages", config.getLargeMessagesDirectory());
+
+      // Verify settings applied from broker.xml
+      assertTrue(config.isPersistenceEnabled(), "Persistence setting don't have the default value");
+      assertTrue(config.getName().equals("localhost"), "Broker name is not the default value");
+
+   } finally {
+      EmbeddedActiveMQ server = Main.getEmbeddedServer();
+      if (server != null) {
+         try {
+            server.stop();
+         } catch (Throwable t) {
+            logger.warn("Failed to stop EmbeddedActiveMQ server during test cleanup", t);
+         }
+      }
+      serverThread.join(3000);
+   }
+}
+
 
 
 /*
