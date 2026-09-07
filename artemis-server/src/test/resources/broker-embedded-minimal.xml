@@ -29,10 +29,6 @@ under the License.
       <name>embedded-broker</name>
       <persistence-enabled>false</persistence-enabled>
 
-
-      <!-- Set this attribute to true to enable the system to purge the paging folder once it exits the paging state -->
-      <purge-page-folders>false</purge-page-folders>
-
       <paging-directory>data/paging-embedded</paging-directory>
 
       <bindings-directory>data/bindings-embedded</bindings-directory>
