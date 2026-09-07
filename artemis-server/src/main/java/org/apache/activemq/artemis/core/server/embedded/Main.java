@@ -18,6 +18,10 @@ package org.apache.activemq.artemis.core.server.embedded;
 
 import java.io.File;
 import java.lang.invoke.MethodHandles;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.activemq.artemis.core.config.FileDeploymentManager;
@@ -48,7 +52,26 @@ public class Main {
       }
 
       if (args.length == 2) {
-         propertiesConfigPath = args[1];
+         if (args[1] == null || args[1].trim().isEmpty()) {
+            throw new IllegalArgumentException("Properties/Config path cannot be empty");
+         }
+
+         String rawPath = args[1].trim();
+         Path pathToCheck;
+
+         // 1. Resolve pathToCheck to verify existence on disk
+         if (rawPath.startsWith("file:")) {
+            pathToCheck = Paths.get(URI.create(rawPath));
+            propertiesConfigPath = rawPath;
+         } else {
+            pathToCheck = Paths.get(rawPath);
+            // Automatically convert plain file system paths to file: URIs for EmbeddedActiveMQ
+            propertiesConfigPath = pathToCheck.toUri().toString();
+         }
+         // 2. Validate existence
+         if (!Files.exists(pathToCheck)) {
+            throw new IllegalArgumentException("Config path does not exist: " + args[1]);
+         }
          logger.debug("User supplied properties config path {}", propertiesConfigPath);
       } else {
          propertiesConfigPath = "/config/," + workDir + "/etc/";

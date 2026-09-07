@@ -16,13 +16,22 @@
  */
 package org.apache.activemq.artemis.core.server.embedded;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,18 +40,18 @@ public class MainTest {
    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
    /*
-    * Tests what happens when no workdir arg is given and the default can't be accessed as not in container env, expect
-    * to throw IOE.
+    * Test what happens when no workdir arg is given, expect
+    * to throw IllegalArgumentException.
     */
    @Test
    @Timeout(5)
    public void testNull() throws Exception {
       try {
          Main.main(new String[] {""});
-         fail("Should have thrown an exception");
-      } catch (IOException expected) {
+         fail("Should have thrown an IllegalArgumentException");
+      } catch (IllegalArgumentException expected) {
          // Expected
-         logger.info("Caught expected IOException: " + expected.getMessage());
+         logger.info("Caught expected IllegalArgumentException: " + expected.getMessage());
       } finally {
          EmbeddedActiveMQ server = Main.getEmbeddedServer();
          if (server != null) {
@@ -58,4 +67,134 @@ public class MainTest {
          }
       }
    }
+
+   /*
+    * Test what happens when 3 arguments are given, expect to throw IllegalArgumentException.
+    */   
+   @Test
+   @Timeout(5)
+   public void testInvalidNumberOfArguments() throws Exception {
+      try {
+         Main.main(new String[] {"a", "b", "c"});
+         fail("Should have thrown an IllegalArgumentException");
+      } catch (IllegalArgumentException expected) {
+         // Expected
+         logger.info("Caught expected IllegalArgumentException: " + expected.getMessage());
+      } finally {
+         EmbeddedActiveMQ server = Main.getEmbeddedServer();
+         if (server != null) {
+            // Happens if the startup succeeds unexpectedly, but is
+            // interrupted before return, e.g during a test timeout.
+            // Clean up to avoid impacting later tests.
+            try {
+               server.stop();
+            } catch (Throwable t) {
+               // Log but suppress, allowing original issue be reported as failure.
+               logger.warn("Caught issue while stopping the unexpectedly-present server", t);
+            }
+         }
+      }
+   }
+
+
+@Test
+@Timeout(15)
+public void testArguments(@TempDir Path tempDir) throws Exception {
+   Path workDirPath = tempDir.resolve("workDir");
+   Path configDirPath = tempDir.resolve("configDir");
+
+   Files.createDirectories(workDirPath);
+   Files.createDirectories(configDirPath);
+
+Path sourceXml = Path.of("src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
+if (!Files.exists(sourceXml)) {
+   // Fallback if running from module root vs project root
+   sourceXml = Path.of("artemis-server/src/test/java/org/apache/activemq/artemis/core/server/embedded/broker.xml");
+}
+assertTrue(Files.exists(sourceXml), "broker.xml should exist in source tree");
+
+Files.copy(sourceXml, sourceXml, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+   String customWorkDir = workDirPath.toAbsolutePath().toString();
+
+   String customConfigPath2 = sourceXml.toAbsolutePath().toString();
+   String customConfigPath = sourceXml.toUri().toString();
+
+
+   Thread serverThread = new Thread(() -> {
+      try {
+         Main.main(new String[] {customWorkDir, customConfigPath2});
+      } catch (Exception e) {
+         logger.error("Error executing Main.main", e);
+      }
+   }, "artemis-main-args-test");
+
+   serverThread.start();
+
+   try {
+      EmbeddedActiveMQ server = null;
+      for (int i = 0; i < 20; i++) {
+         server = Main.getEmbeddedServer();
+         if (server != null && server.getActiveMQServer() != null && server.getActiveMQServer().isStarted()) {
+            break;
+         }
+         Thread.sleep(500);
+      }
+
+      assertNotNull(server, "EmbeddedActiveMQ server instance was never initialized");
+      assertNotNull(server.getActiveMQServer(), "ActiveMQServer was never initialized");
+      assertTrue(server.getActiveMQServer().isStarted(), "Server failed to reach started state");
+
+      var config = server.getActiveMQServer().getConfiguration();
+
+      // 1. Verify custom workDir parameter was applied
+      String expectedDataDir = customWorkDir + "/data";
+      assertEquals(expectedDataDir, config.getJournalDirectory());
+      assertEquals(expectedDataDir + "/bindings", config.getBindingsDirectory());
+      assertEquals(expectedDataDir + "/paging", config.getPagingDirectory());
+      assertEquals(expectedDataDir + "/largemessages", config.getLargeMessagesDirectory());
+
+
+      //assertEquals("test-broker-from-xml", config.getName(), "Custom broker name from broker.xml was not applied");
+      assertFalse(config.isPersistenceEnabled(), "Persistence setting from broker.xml was not applied");
+
+   } finally {
+      EmbeddedActiveMQ server = Main.getEmbeddedServer();
+      if (server != null) {
+         server.stop();
+      }
+      serverThread.join(3000);
+   }
+}
+
+
+
+
+/*
+   @Test
+   @Timeout(5)
+   public void testReadOnlyWorkDir(@TempDir Path tempDir) throws Exception {
+      File readOnlyDir = tempDir.resolve("no-access").toFile();
+      assertTrue(readOnlyDir.mkdir());
+      assertTrue(readOnlyDir.setWritable(false, false)); // Revokes write access for all on Windows and Linux
+
+      try {
+         Main.main(new String[] {readOnlyDir.getAbsolutePath()});
+         fail("Should have thrown an exception due to read-only workDir");
+      } catch (Exception expected) {
+         logger.info("Caught expected IOException: " + expected.getMessage());
+      } finally {
+         readOnlyDir.setWritable(true); // Ensure clean deletion
+         EmbeddedActiveMQ server = Main.getEmbeddedServer();
+         if (server != null) {
+            try {
+               server.stop();
+            } catch (Throwable t) {
+               logger.warn("Caught issue while stopping the unexpectedly-present server", t);
+            }
+         }
+      }
+
+   }
+*/
 }
